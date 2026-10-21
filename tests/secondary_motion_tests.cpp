@@ -92,5 +92,11 @@ int main() {
     solid_chain.step(solid_settings);
     assert(solid_chain.valid());
     assert(!phydec::point_inside_closed_mesh(solid_chain.points()[1].position, solid_cube));
+
+    SecondaryMotionChain near_surface_solid_chain({{0.0F, 0.0F, 0.0F}, {0.98F, 0.0F, 0.0F}});
+    near_surface_solid_chain.step(solid_settings);
+    assert(near_surface_solid_chain.valid());
+    assert(!phydec::point_inside_closed_mesh(
+        near_surface_solid_chain.points()[1].position, solid_cube));
     return 0;
 }
