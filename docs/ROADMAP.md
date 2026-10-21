@@ -18,7 +18,7 @@
 - Implemented first narrow-phase set: sphere, capsule, one-sided plane, and triangle-mesh surface contacts.
 - Added optional median-split BVH acceleration with nearest-point AABB pruning. Added BVH refitting for vertex deformation when triangle count/order remain unchanged; rebuild when topology or triangle ordering changes. Brute-force fallback remains available when no valid BVH exists.
 - Added conservative-advancement swept-sphere collision against static triangle surfaces in secondary motion, plus relative-motion CCD for rigidly translating triangle meshes using the existing BVH. Rotation and topology changes during a sweep remain open work. Deforming-mesh CCD now supports linearly interpolated vertex motion with stable triangle count/order and conservative per-node BVH displacement bounds. Add robust watertight-mesh validation and broader deformation/CCD performance tests.
-- Establish broad-phase/narrow-phase interfaces and explicit tolerances. An opt-in nearest-point benchmark now exists; extend it to BVH refit and swept collision workloads.
+- Establish broad-phase/narrow-phase interfaces and explicit tolerances. Opt-in nearest-point and deforming-CCD benchmarks report timing; deforming CCD also asserts deterministic candidate reduction against brute force.
 
 ## M3 — Deformation and authoring
 - Soft-body prototype and attachment/weight maps.
@@ -45,4 +45,5 @@
 - [x] Add an odd/even ray-based point-in-closed-mesh query and tetrahedron regression tests. Caller must supply a closed, watertight mesh; boundary points are treated as outside and manifoldness is not validated.
 - [x] Integrate rigidly translating-mesh CCD into secondary motion.
 - [x] Add deforming-mesh swept-sphere query and integrate it into secondary motion for stable topology/linear vertex motion.
-- [ ] Add rotation-aware CCD, mesh topology validation, and broader candidate-reduction benchmarks.
+- [x] Add deforming-CCD candidate counters, brute-force equivalence tests, and a candidate-reduction benchmark.
+- [ ] Add rotation-aware CCD, mesh topology validation, and broader refit/swept-collision profiling.

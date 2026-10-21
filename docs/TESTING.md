@@ -9,16 +9,16 @@ This project is developed through GitHub, so you can verify changes from an Andr
 3. Wait until it says **Success**. If it says **Failure**, open the run and inspect the first failed step and its log.
 4. Confirm the run belongs to the latest commit on `main`. An older green run does not verify newer code.
 
-The workflow configures and builds the C++20 core, runs CTest, installs the library, builds and runs an independent consumer, then builds and runs the BVH benchmark's correctness guard.
+The workflow configures and builds the C++20 core, runs CTest, installs the library, builds and runs an independent consumer, then builds and runs both BVH benchmark correctness guards.
 
 ## 2. What the automated tests cover
 
 - **Core motion:** deterministic stepping, anchors, and basic collision response.
 - **Mesh collision:** closest-point queries, BVH vs. brute-force agreement, refitting, containment, and fast-crossing CCD.
 - **Moving mesh CCD:** a translating mesh hit and miss.
-- **Deforming mesh CCD:** a triangle moving through a stationary sphere and a separated miss.
+- **Deforming mesh CCD:** hit/miss cases, BVH-vs-brute-force agreement, and a deterministic candidate-count reduction assertion.
 - **Packaging:** a separate project uses `find_package(PHYDEC CONFIG REQUIRED)` and links `PHYDEC::Core`.
-- **Performance guard:** the benchmark compares BVH and brute-force query results. Timings are informational; CI does not enforce a machine-dependent speedup threshold.
+- **Performance guards:** the nearest-point benchmark compares BVH and brute-force results; the deforming-CCD benchmark also checks that candidate triangles stay below 10% of the test mesh. Timings are informational; CI does not enforce a machine-dependent speedup threshold.
 
 ## 3. Run tests locally (desktop/Linux/macOS/Windows with CMake)
 
@@ -30,12 +30,13 @@ cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
 ```
 
-To run the optional benchmark:
+To run the optional benchmarks:
 
 ```sh
 cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DPHYDEC_BUILD_BENCHMARKS=ON -DPHYDEC_BUILD_TESTS=OFF
 cmake --build build-bench --target phydec_mesh_bvh_benchmark --parallel 2
 ./build-bench/benchmarks/phydec_mesh_bvh_benchmark
+./build-bench/benchmarks/phydec_deforming_ccd_benchmark
 ```
 
 ## 4. What these tests do not prove yet
