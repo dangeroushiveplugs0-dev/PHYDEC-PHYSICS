@@ -203,6 +203,22 @@ inline bool build_triangle_mesh_bvh(TriangleMeshCollider& mesh,
 inline bool refit_triangle_mesh_bvh(TriangleMeshCollider& mesh) {
     if (mesh.bvh_nodes.empty() || mesh.bvh_triangle_indices.empty()) return false;
 
+    // Refit is valid only while the set of finite triangles is unchanged.
+    // The builder intentionally omits non-finite triangles. If one of those
+    // triangles becomes finite, it must be inserted by a full rebuild; otherwise
+    // the refitted hierarchy would silently miss geometry.
+    std::size_t finite_triangle_count = 0;
+    for (const Triangle& triangle : mesh.triangles) {
+        if (is_finite(triangle.a) && is_finite(triangle.b) && is_finite(triangle.c)) {
+            ++finite_triangle_count;
+        }
+    }
+    if (finite_triangle_count != mesh.bvh_triangle_indices.size()) {
+        mesh.bvh_nodes.clear();
+        mesh.bvh_triangle_indices.clear();
+        return false;
+    }
+
     for (const std::size_t index : mesh.bvh_triangle_indices) {
         if (index >= mesh.triangles.size()) {
             mesh.bvh_nodes.clear();
