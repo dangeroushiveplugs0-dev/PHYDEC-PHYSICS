@@ -483,6 +483,43 @@ inline MeshContainment classify_point_against_closed_mesh(
     return (crossings % 2U) == 1U ? MeshContainment::inside : MeshContainment::outside;
 }
 
+// Odd/even ray test for points against a closed, watertight triangle mesh.
+// The mesh must describe a closed surface; this does not validate manifoldness.
+// Points within tolerance of the surface are treated as boundary/outside.
+inline bool point_inside_closed_mesh(const Vec3& point,
+                                     const TriangleMeshCollider& mesh,
+                                     float surface_tolerance = 1.0e-5F) noexcept {
+    if (!is_finite(point) || !std::isfinite(surface_tolerance) || surface_tolerance < 0.0F ||
+        mesh.triangles.empty()) return false;
+    const ClosestTrianglePoint nearest = closest_point_on_mesh(point, mesh);
+    if (!nearest.valid || nearest.distance_squared <= surface_tolerance * surface_tolerance) return false;
+    const Vec3 direction = normalized(Vec3{1.0F, 0.37139067F, 0.52910316F});
+    std::size_t intersections = 0;
+    constexpr float epsilon = 1.0e-7F;
+    for (const Triangle& triangle : mesh.triangles) {
+        if (!is_finite(triangle.a) || !is_finite(triangle.b) || !is_finite(triangle.c)) continue;
+        const Vec3 edge1 = triangle.b - triangle.a;
+        const Vec3 edge2 = triangle.c - triangle.a;
+        const Vec3 pvec{direction.y * edge2.z - direction.z * edge2.y,
+                        direction.z * edge2.x - direction.x * edge2.z,
+                        direction.x * edge2.y - direction.y * edge2.x};
+        const float determinant = dot(edge1, pvec);
+        if (std::abs(determinant) <= epsilon) continue;
+        const float inverse = 1.0F / determinant;
+        const Vec3 tvec = point - triangle.a;
+        const float u = dot(tvec, pvec) * inverse;
+        if (u < -epsilon || u > 1.0F + epsilon) continue;
+        const Vec3 qvec{tvec.y * edge1.z - tvec.z * edge1.y,
+                        tvec.z * edge1.x - tvec.x * edge1.z,
+                        tvec.x * edge1.y - tvec.y * edge1.x};
+        const float v = dot(direction, qvec) * inverse;
+        if (v < -epsilon || u + v > 1.0F + epsilon) continue;
+        const float distance = dot(edge2, qvec) * inverse;
+        if (distance > surface_tolerance) ++intersections;
+    }
+    return (intersections % 2U) == 1U;
+}
+
 // Surface contact only: watertight solid containment is a separate feature.
 inline Contact resolve_mesh_contact(Vec3& point, float particle_radius,
                                     const TriangleMeshCollider& mesh) noexcept {
