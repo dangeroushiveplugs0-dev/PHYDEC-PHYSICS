@@ -26,6 +26,12 @@ struct TranslatingMeshCollider {
     Vec3 translation_current{};
 };
 
+// Non-owning references to the previous/current vertex poses of one stable-topology mesh.
+struct DeformingMeshCollider {
+    const TriangleMeshCollider* previous_mesh{nullptr};
+    const TriangleMeshCollider* current_mesh{nullptr};
+};
+
 struct SecondaryMotionSettings {
     Vec3 gravity{0.0F, 0.0F, -9.81F};
     Vec3 external_acceleration{};
@@ -39,6 +45,7 @@ struct SecondaryMotionSettings {
     std::vector<PlaneCollider> plane_colliders{};
     std::vector<TriangleMeshCollider> mesh_colliders{};
     std::vector<TranslatingMeshCollider> translating_mesh_colliders{};
+    std::vector<DeformingMeshCollider> deforming_mesh_colliders{};
 };
 
 // Small deterministic baseline for bone-chain secondary motion.
