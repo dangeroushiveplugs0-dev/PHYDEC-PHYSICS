@@ -388,6 +388,33 @@ inline SweptMeshContact sweep_sphere_against_mesh(const Vec3& start, const Vec3&
     return result;
 }
 
+// Continuous sphere query against a triangle mesh undergoing rigid translation.
+// Triangle coordinates are expressed in the mesh's untranslated reference frame.
+// This reuses the mesh BVH by sweeping in relative motion: sphere motion minus
+// collider translation. It does not support rotation or per-vertex deformation;
+// those require a swept/deforming BVH and a dedicated CCD strategy.
+inline SweptMeshContact sweep_sphere_against_translating_mesh(
+    const Vec3& sphere_start, const Vec3& sphere_end, float radius,
+    const Vec3& mesh_translation_start, const Vec3& mesh_translation_end,
+    const TriangleMeshCollider& mesh, unsigned max_iterations = 32) noexcept {
+    SweptMeshContact result;
+    if (!is_finite(sphere_start) || !is_finite(sphere_end) ||
+        !is_finite(mesh_translation_start) || !is_finite(mesh_translation_end)) {
+        return result;
+    }
+
+    const Vec3 relative_start = sphere_start - mesh_translation_start;
+    const Vec3 relative_end = sphere_end - mesh_translation_end;
+    result = sweep_sphere_against_mesh(relative_start, relative_end, radius, mesh, max_iterations);
+    if (!result.hit) return result;
+
+    const float t = std::clamp(result.time_of_impact, 0.0F, 1.0F);
+    const Vec3 mesh_translation = mesh_translation_start +
+        (mesh_translation_end - mesh_translation_start) * t;
+    result.position += mesh_translation;
+    return result;
+}
+
 // Ray/AABB test used by the BVH-accelerated closed-mesh containment query.
 inline bool ray_intersects_aabb(const Vec3& origin, const Vec3& direction,
                                 const TriangleAabb& bounds) noexcept {
