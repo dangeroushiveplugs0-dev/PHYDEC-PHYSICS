@@ -4,7 +4,7 @@ A renderer-independent, C++20 physics engine in development, designed for reusab
 
 ## Current status
 
-**M0 foundation — initial implementation.** The repository contains a small secondary-motion chain prototype, CMake build, automated tests, and a GitHub Actions workflow. Build/test status must be checked in Actions after this commit.
+**Foundation + analytic collision prototype.** The repository contains a secondary-motion chain prototype, CMake build, automated tests, and GitHub Actions configuration. Sphere, capsule, and one-sided plane contact queries are implemented with edge-case tests. Build/test status must be verified in Actions before treating this milestone as green.
 
 ## Build and test
 
@@ -17,7 +17,7 @@ ctest --test-dir build --output-on-failure
 ## Direction
 
 - Secondary motion for animated chains
-- Collision primitives, detailed mesh queries, and proxies
+- Analytic collision contacts, then detailed mesh queries and proxies
 - Soft-body deformation and attachment weights
 - Viscous-liquid research with smooth surface reconstruction
 - Renderer-independent core with future Android integration
