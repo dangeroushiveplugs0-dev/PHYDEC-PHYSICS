@@ -4,7 +4,7 @@ A renderer-independent, C++20 physics engine in development, designed for reusab
 
 ## Current status
 
-**Secondary-motion and analytic-collision prototype.** The core has a bone-chain solver plus sphere, capsule, and one-sided plane contacts. The solver now applies configured contacts during its constraint iterations, with regression tests for basic contact cases. GitHub Actions build/test status still needs confirmation before treating the code as verified.
+**Secondary-motion and collision prototype.** The solver supports sphere, capsule, one-sided plane, and triangle-mesh surface contacts. Mesh collision uses the actual triangles supplied by the caller rather than approximating the mesh with a capsule or box. The current mesh query is brute-force and resolves nearby surface contacts; it does not yet provide watertight solid containment, continuous collision detection, or a BVH for large meshes. GitHub Actions must be green on the latest commit before this code is considered verified.
 
 ## Build and test
 
@@ -17,7 +17,8 @@ ctest --test-dir build --output-on-failure
 ## Direction
 
 - Secondary motion for animated chains
-- Analytic collision response, then detailed mesh queries and proxies
+- Sphere, capsule, plane, and true triangle-mesh surface collision
+- Future BVH acceleration and detailed mesh queries for large meshes
 - Soft-body deformation and attachment weights
 - Viscous-liquid research with smooth surface reconstruction
 - Renderer-independent core with future Android integration
