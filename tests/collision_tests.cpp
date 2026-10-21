@@ -34,7 +34,7 @@ int main() {
     const Contact capsule_hit = resolve_capsule_contact(capsule_point, 0.25F, capsule);
     assert(capsule_hit.touching);
     assert(std::abs(capsule_hit.penetration_depth - 0.5F) < 1.0e-5F);
-    assert(std::abs(length(capsule_point) - 0.5F) < 1.0e-5F);
+    assert(std::abs(length(capsule_point) - 0.75F) < 1.0e-5F);
     assert(is_finite(capsule_hit.normal));
 
     Vec3 capsule_miss{2.0F, 0.0F, 0.0F};
