@@ -37,6 +37,9 @@ struct TriangleMeshCollider {
     // changing triangles; an empty hierarchy automatically uses brute force.
     std::vector<std::size_t> bvh_triangle_indices{};
     std::vector<TriangleBvhNode> bvh_nodes{};
+    // Opt in only for closed, non-self-intersecting meshes. Open surfaces remain
+    // surface-only colliders and do not trigger containment projection.
+    bool closed_mesh_solid{false};
 };
 
 struct ClosestTrianglePoint {
@@ -558,7 +561,33 @@ inline bool point_inside_closed_mesh(const Vec3& point,
     return (intersections % 2U) == 1U;
 }
 
-// Surface contact only: watertight solid containment is a separate feature.
+// Projects a point out of a closed solid mesh when it is fully inside.
+// This is intentionally opt-in: open or non-manifold surfaces must remain surface-only.
+inline Contact resolve_closed_mesh_contact(Vec3& point, float particle_radius,
+                                           const TriangleMeshCollider& mesh,
+                                           float surface_tolerance = 1.0e-5F) noexcept {
+    Contact contact;
+    if (!mesh.closed_mesh_solid || !is_finite(point) || !std::isfinite(particle_radius) ||
+        particle_radius < 0.0F) return contact;
+    if (classify_point_against_closed_mesh(point, mesh, surface_tolerance) != MeshContainment::inside) {
+        return contact;
+    }
+
+    const ClosestTrianglePoint closest = closest_point_on_mesh(point, mesh);
+    if (!closest.valid) return contact;
+    const Vec3 outward = normalized(closest.position - point);
+    if (!is_finite(outward) || length(outward) <= 1.0e-7F) return contact;
+
+    const float distance = std::sqrt(std::max(closest.distance_squared, 0.0F));
+    point = closest.position + outward * particle_radius;
+    contact.position = closest.position;
+    contact.normal = outward;
+    contact.penetration_depth = distance + particle_radius;
+    contact.touching = true;
+    return contact;
+}
+
+// Surface contact for open meshes; closed-mesh projection is an explicit opt-in above.
 inline Contact resolve_mesh_contact(Vec3& point, float particle_radius,
                                     const TriangleMeshCollider& mesh) noexcept {
     Contact contact;
