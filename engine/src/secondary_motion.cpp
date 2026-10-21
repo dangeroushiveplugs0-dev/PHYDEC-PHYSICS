@@ -124,6 +124,26 @@ void SecondaryMotionChain::step(const SecondaryMotionSettings& settings) {
                         point.position, point.collision_radius, collider);
                 });
             }
+            for (const auto& moving : settings.translating_mesh_colliders) {
+                preserve_velocity_contact([&]() {
+                    const SweptMeshContact swept = sweep_sphere_against_translating_mesh(
+                        point.previous_position, point.position, point.collision_radius,
+                        moving.translation_previous, moving.translation_current, moving.mesh);
+                    Contact contact;
+                    if (swept.hit) {
+                        point.position = swept.position;
+                        contact.position = swept.position - swept.normal * point.collision_radius;
+                        contact.normal = swept.normal;
+                        contact.touching = true;
+                        return contact;
+                    }
+                    point.position -= moving.translation_current;
+                    contact = resolve_mesh_contact(point.position, point.collision_radius, moving.mesh);
+                    point.position += moving.translation_current;
+                    contact.position += moving.translation_current;
+                    return contact;
+                });
+            }
         }
     }
     points_[0].position = points_[0].anchor;
