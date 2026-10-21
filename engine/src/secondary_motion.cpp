@@ -68,10 +68,29 @@ void SecondaryMotionChain::step(const SecondaryMotionSettings& settings) {
         // fake velocity solely because a contact projected the point outward.
         for (std::size_t i = 1; i < points_.size(); ++i) {
             auto& point = points_[i];
-            const auto preserve_velocity_contact = [&point](auto&& resolver) {
+            const auto preserve_velocity_contact = [&point, &settings](auto&& resolver) {
                 const Vec3 before = point.position;
                 const Contact contact = resolver();
-                if (contact.touching) point.previous_position += point.position - before;
+                if (!contact.touching) return;
+
+                // First remove artificial velocity introduced by positional projection.
+                point.previous_position += point.position - before;
+
+                // Verlet displacement represents per-step velocity. Remove inward
+                // normal motion, apply restitution, then damp tangential motion.
+                const Vec3 normal = normalized(contact.normal);
+                if (!is_finite(normal) || length(normal) <= 1.0e-7F) return;
+                Vec3 displacement = point.position - point.previous_position;
+                const float normal_displacement = dot(displacement, normal);
+                if (normal_displacement < 0.0F) {
+                    const float restitution = std::clamp(settings.collision_restitution, 0.0F, 1.0F);
+                    const Vec3 normal_part = normal * normal_displacement;
+                    Vec3 tangent_part = displacement - normal_part;
+                    const float friction = std::clamp(settings.collision_friction, 0.0F, 1.0F);
+                    tangent_part *= (1.0F - friction);
+                    displacement = tangent_part - normal_part * restitution;
+                    point.previous_position = point.position - displacement;
+                }
             };
 
             for (const auto& collider : settings.sphere_colliders) {
