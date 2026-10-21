@@ -142,5 +142,39 @@ int main() {
     assert(moving_grid.bvh_nodes.empty());
     assert(moving_grid.bvh_triangle_indices.empty());
 
+    // Closed cube containment: odd/even ray crossings should classify an
+    // interior point and an exterior point, while surface points stay ambiguous.
+    TriangleMeshCollider cube;
+    const Vec3 v000{-1.0F, -1.0F, -1.0F}, v100{1.0F, -1.0F, -1.0F};
+    const Vec3 v010{-1.0F, 1.0F, -1.0F}, v110{1.0F, 1.0F, -1.0F};
+    const Vec3 v001{-1.0F, -1.0F, 1.0F}, v101{1.0F, -1.0F, 1.0F};
+    const Vec3 v011{-1.0F, 1.0F, 1.0F}, v111{1.0F, 1.0F, 1.0F};
+    const auto quad = [&cube](const Vec3& a, const Vec3& b, const Vec3& c, const Vec3& d) {
+        cube.triangles.push_back(Triangle{a, b, c});
+        cube.triangles.push_back(Triangle{a, c, d});
+    };
+    quad(v000, v010, v110, v100); // bottom
+    quad(v001, v101, v111, v011); // top
+    quad(v000, v100, v101, v001); // front
+    quad(v010, v011, v111, v110); // back
+    quad(v000, v001, v011, v010); // left
+    quad(v100, v110, v111, v101); // right
+    assert(build_triangle_mesh_bvh(cube, 2));
+    assert(classify_point_against_closed_mesh(Vec3{0.13F, 0.21F, 0.37F}, cube) ==
+           MeshContainment::inside);
+    assert(classify_point_against_closed_mesh(Vec3{2.5F, 0.2F, -0.1F}, cube) ==
+           MeshContainment::outside);
+    assert(classify_point_against_closed_mesh(Vec3{1.0F, 0.0F, 0.0F}, cube) ==
+           MeshContainment::boundary_or_unknown);
+
+    // The reference path without a BVH must agree for ordinary interior/exterior queries.
+    TriangleMeshCollider cube_reference = cube;
+    cube_reference.bvh_nodes.clear();
+    cube_reference.bvh_triangle_indices.clear();
+    assert(classify_point_against_closed_mesh(Vec3{0.13F, 0.21F, 0.37F}, cube_reference) ==
+           MeshContainment::inside);
+    assert(classify_point_against_closed_mesh(Vec3{2.5F, 0.2F, -0.1F}, cube_reference) ==
+           MeshContainment::outside);
+
     return 0;
 }
