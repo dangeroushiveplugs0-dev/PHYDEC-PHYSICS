@@ -6,6 +6,24 @@ A renderer-independent, C++20 physics engine in development, designed for reusab
 
 **Secondary-motion and collision prototype.** The solver supports sphere, capsule, one-sided plane, and triangle-mesh surface contacts. Mesh collision uses the actual triangles supplied by the caller rather than approximating the mesh with a capsule or box. Mesh queries can use an explicitly built median-split BVH to prune triangles during nearest-surface queries. After vertex deformation, `refit_triangle_mesh_bvh(mesh)` updates bounds without rebuilding the split structure when triangle count/order are unchanged; rebuild with `build_triangle_mesh_bvh(mesh)` after topology or triangle-order changes. If refitting fails, stale acceleration data is cleared and queries fall back to the brute-force reference path. Mesh collision also has a conservative-advancement swept-sphere query integrated into secondary motion to reduce tunneling through thin static triangle surfaces. An odd/even ray query can classify points against caller-supplied closed, watertight meshes; it does not validate mesh closure and is not yet integrated into solver response. Moving/deforming-mesh continuous collision remains unimplemented. GitHub Actions must be green on the latest commit before this code is considered verified.
 
+## Integrate into another C++ project
+
+PHYDEC is intended to be reusable as a core engine/library, not tied to one app. It has no renderer dependency and exposes a CMake target named `PHYDEC::Core` plus a convenience header:
+
+```cpp
+#include <phydec/phydec.hpp>
+```
+
+To build and install the library from this repository:
+
+```sh
+cmake -S . -B build -DPHYDEC_BUILD_TESTS=OFF -DPHYDEC_INSTALL=ON
+cmake --build build --parallel
+cmake --install build --prefix ./install
+```
+
+A consuming CMake project can then use the installed package with `find_package(PHYDEC CONFIG REQUIRED)` and link `PHYDEC::Core` (set `CMAKE_PREFIX_PATH` to the install prefix). The install/export workflow is a first integration step; Android NDK packaging and ABI-specific artifacts remain future work.
+
 ## Build and test
 
 ```sh
