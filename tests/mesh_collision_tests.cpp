@@ -124,7 +124,7 @@ int main() {
     // Deforming geometry can refit the existing hierarchy without rebuilding
     // its split structure, and results must still match the brute-force reference.
     TriangleMeshCollider moving_grid = grid;
-    moving_grid.triangles.pop_back(); // remove the deliberately invalid triangle
+    moving_grid.triangles.pop_back(); // use a stable finite-only subset for the refit test
     assert(build_triangle_mesh_bvh(moving_grid, 4));
     const std::size_t original_node_count = moving_grid.bvh_nodes.size();
     for (Triangle& triangle : moving_grid.triangles) {
