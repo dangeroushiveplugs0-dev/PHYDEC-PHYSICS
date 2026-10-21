@@ -4,7 +4,7 @@ A renderer-independent, C++20 physics engine in development, designed for reusab
 
 ## Current status
 
-**Secondary-motion and collision prototype.** The solver supports sphere, capsule, one-sided plane, and triangle-mesh surface contacts. Mesh collision uses the actual triangles supplied by the caller rather than approximating the mesh with a capsule or box. Mesh queries can use an explicitly built median-split BVH to prune triangles during nearest-surface queries; meshes without a BVH retain the brute-force fallback. Rebuild the BVH after changing triangle geometry. Collision currently resolves nearby surface contacts; watertight solid containment and continuous collision detection are not implemented yet. GitHub Actions must be green on the latest commit before this code is considered verified.
+**Secondary-motion and collision prototype.** The solver supports sphere, capsule, one-sided plane, and triangle-mesh surface contacts. Mesh collision uses the actual triangles supplied by the caller rather than approximating the mesh with a capsule or box. Mesh queries can use an explicitly built median-split BVH to prune triangles during nearest-surface queries; meshes without a BVH retain the brute-force fallback. Rebuild the BVH after changing triangle geometry. Mesh collision also has a conservative-advancement swept-sphere query integrated into secondary motion to reduce tunneling through thin static triangle surfaces. Watertight solid containment and moving/deforming-mesh continuous collision remain unimplemented. GitHub Actions must be green on the latest commit before this code is considered verified.
 
 ## Build and test
 
