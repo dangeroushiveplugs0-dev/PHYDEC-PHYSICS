@@ -160,6 +160,21 @@ int main() {
     quad(v000, v001, v011, v010); // left
     quad(v100, v110, v111, v101); // right
     assert(build_triangle_mesh_bvh(cube, 2));
+    cube.closed_mesh_solid = true;
+
+    // Solid meshes push an initialized/interior point to the nearest outside
+    // surface plus its radius; open surface colliders remain opt-in safe.
+    Vec3 trapped{0.13F, 0.21F, 0.37F};
+    const Contact solid_contact = resolve_closed_mesh_contact(trapped, 0.1F, cube);
+    assert(solid_contact.touching);
+    assert(!point_inside_closed_mesh(trapped, cube));
+    assert(std::abs(length(trapped - solid_contact.position) - 0.1F) < 1.0e-4F);
+
+    TriangleMeshCollider surface_only_cube = cube;
+    surface_only_cube.closed_mesh_solid = false;
+    Vec3 untouched_inside{0.13F, 0.21F, 0.37F};
+    assert(!resolve_closed_mesh_contact(untouched_inside, 0.1F, surface_only_cube).touching);
+    assert(point_inside_closed_mesh(untouched_inside, surface_only_cube));
     assert(classify_point_against_closed_mesh(Vec3{0.13F, 0.21F, 0.37F}, cube) ==
            MeshContainment::inside);
     assert(classify_point_against_closed_mesh(Vec3{2.5F, 0.2F, -0.1F}, cube) ==
