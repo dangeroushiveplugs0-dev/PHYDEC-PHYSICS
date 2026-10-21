@@ -51,5 +51,20 @@ int main() {
     CapsuleCollider invalid_capsule = capsule;
     invalid_capsule.radius = -1.0F;
     assert(!resolve_capsule_contact(invalid_capsule_point, 0.1F, invalid_capsule).touching);
+
+    const PlaneCollider floor{{0.0F, 0.0F, 0.0F}, {0.0F, 0.0F, 2.0F}};
+    Vec3 below_floor{1.0F, 2.0F, -0.2F};
+    const Contact plane_hit = resolve_plane_contact(below_floor, 0.1F, floor);
+    assert(plane_hit.touching);
+    assert(std::abs(plane_hit.penetration_depth - 0.3F) < 1.0e-5F);
+    assert(std::abs(below_floor.z - 0.1F) < 1.0e-5F);
+    assert(std::abs(length(plane_hit.normal) - 1.0F) < 1.0e-5F);
+
+    Vec3 above_floor{0.0F, 0.0F, 0.5F};
+    assert(!resolve_plane_contact(above_floor, 0.1F, floor).touching);
+
+    Vec3 invalid_plane_point{};
+    const PlaneCollider invalid_plane{{}, {}};
+    assert(!resolve_plane_contact(invalid_plane_point, 0.1F, invalid_plane).touching);
     return 0;
 }
