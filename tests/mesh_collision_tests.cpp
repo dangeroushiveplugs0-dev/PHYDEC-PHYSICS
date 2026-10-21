@@ -176,5 +176,19 @@ int main() {
     assert(classify_point_against_closed_mesh(Vec3{2.5F, 0.2F, -0.1F}, cube_reference) ==
            MeshContainment::outside);
 
+    // Closed tetrahedron containment is separate from surface-contact resolution.
+    TriangleMeshCollider tetrahedron;
+    tetrahedron.triangles = {
+        Triangle{{0.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F}, {0.0F, 1.0F, 0.0F}},
+        Triangle{{0.0F, 0.0F, 0.0F}, {0.0F, 0.0F, 1.0F}, {1.0F, 0.0F, 0.0F}},
+        Triangle{{0.0F, 0.0F, 0.0F}, {0.0F, 1.0F, 0.0F}, {0.0F, 0.0F, 1.0F}},
+        Triangle{{1.0F, 0.0F, 0.0F}, {0.0F, 0.0F, 1.0F}, {0.0F, 1.0F, 0.0F}}
+    };
+    assert(point_inside_closed_mesh(Vec3{0.1F, 0.1F, 0.1F}, tetrahedron));
+    assert(!point_inside_closed_mesh(Vec3{1.2F, 1.2F, 1.2F}, tetrahedron));
+    assert(!point_inside_closed_mesh(Vec3{0.2F, 0.2F, 0.0F}, tetrahedron));
+    assert(!point_inside_closed_mesh(Vec3{NAN, 0.0F, 0.0F}, tetrahedron));
+    assert(!point_inside_closed_mesh(Vec3{0.1F, 0.1F, 0.1F}, empty_mesh));
+
     return 0;
 }
