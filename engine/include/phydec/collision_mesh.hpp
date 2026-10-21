@@ -415,6 +415,100 @@ inline SweptMeshContact sweep_sphere_against_translating_mesh(
     return result;
 }
 
+// Continuous sphere query against linearly deforming triangles.
+// Previous/current meshes must have identical triangle count and ordering.
+// Current-mesh BVH node bounds are expanded by the maximum vertex displacement,
+// conservatively retaining candidates that moved into the sphere's swept AABB.
+inline SweptMeshContact sweep_sphere_against_deforming_mesh(
+    const Vec3& sphere_start, const Vec3& sphere_end, float radius,
+    const TriangleMeshCollider& previous_mesh, const TriangleMeshCollider& current_mesh,
+    unsigned max_iterations = 32) {
+    SweptMeshContact result;
+    if (!is_finite(sphere_start) || !is_finite(sphere_end) ||
+        !std::isfinite(radius) || radius < 0.0F || max_iterations == 0 ||
+        previous_mesh.triangles.size() != current_mesh.triangles.size()) return result;
+
+    float max_displacement = 0.0F;
+    for (std::size_t i = 0; i < current_mesh.triangles.size(); ++i) {
+        const Triangle& a = previous_mesh.triangles[i];
+        const Triangle& b = current_mesh.triangles[i];
+        if (!is_finite(a.a) || !is_finite(a.b) || !is_finite(a.c) ||
+            !is_finite(b.a) || !is_finite(b.b) || !is_finite(b.c)) continue;
+        max_displacement = std::max({max_displacement, length(b.a-a.a),
+            length(b.b-a.b), length(b.c-a.c)});
+    }
+
+    const TriangleAabb query{
+        {std::min(sphere_start.x,sphere_end.x)-radius,
+         std::min(sphere_start.y,sphere_end.y)-radius,
+         std::min(sphere_start.z,sphere_end.z)-radius},
+        {std::max(sphere_start.x,sphere_end.x)+radius,
+         std::max(sphere_start.y,sphere_end.y)+radius,
+         std::max(sphere_start.z,sphere_end.z)+radius}};
+    const auto overlaps=[](const TriangleAabb& a,const TriangleAabb& b) {
+        return a.minimum.x<=b.maximum.x && a.maximum.x>=b.minimum.x &&
+            a.minimum.y<=b.maximum.y && a.maximum.y>=b.minimum.y &&
+            a.minimum.z<=b.maximum.z && a.maximum.z>=b.minimum.z;
+    };
+    const Vec3 pad{max_displacement,max_displacement,max_displacement};
+    std::vector<std::size_t> candidates;
+    if (!current_mesh.bvh_nodes.empty() && !current_mesh.bvh_triangle_indices.empty()) {
+        const auto visit=[&](auto&& self,int index)->void {
+            const TriangleBvhNode& node=current_mesh.bvh_nodes[static_cast<std::size_t>(index)];
+            const TriangleAabb bounds{node.bounds.minimum-pad,node.bounds.maximum+pad};
+            if (!overlaps(bounds,query)) return;
+            if (node.is_leaf()) {
+                for(std::size_t i=node.first;i<node.first+node.count;++i)
+                    candidates.push_back(current_mesh.bvh_triangle_indices[i]);
+            } else { self(self,node.left); self(self,node.right); }
+        };
+        visit(visit,0);
+    } else {
+        candidates.reserve(current_mesh.triangles.size());
+        for(std::size_t i=0;i<current_mesh.triangles.size();++i) candidates.push_back(i);
+    }
+
+    const Vec3 travel=sphere_end-sphere_start;
+    const float sphere_speed=length(travel);
+    float earliest=2.0F;
+    for(const std::size_t index:candidates) {
+        if(index>=previous_mesh.triangles.size() || index>=current_mesh.triangles.size()) continue;
+        const Triangle& a=previous_mesh.triangles[index];
+        const Triangle& b=current_mesh.triangles[index];
+        if(!is_finite(a.a)||!is_finite(a.b)||!is_finite(a.c)||
+           !is_finite(b.a)||!is_finite(b.b)||!is_finite(b.c)) continue;
+        const float speed=sphere_speed+std::max({length(b.a-a.a),length(b.b-a.b),length(b.c-a.c)});
+        const auto triangle_at=[&](float t) { return Triangle{
+            a.a+(b.a-a.a)*t,a.b+(b.b-a.b)*t,a.c+(b.c-a.c)*t}; };
+        float t=0.0F;
+        for(unsigned iteration=0;iteration<max_iterations;++iteration) {
+            const Vec3 center=sphere_start+travel*t;
+            const Triangle tri=triangle_at(t);
+            const Vec3 closest=closest_point_on_triangle(center,tri);
+            const Vec3 offset=center-closest;
+            const float distance=length(offset);
+            if(!std::isfinite(distance)) break;
+            if(distance<=radius+1.0e-5F) {
+                if(t<earliest) {
+                    Vec3 normal=distance>1.0e-7F ? normalized(offset) :
+                        normalized(cross(tri.b-tri.a,tri.c-tri.a));
+                    if(!is_finite(normal)||length(normal)<=1.0e-7F) break;
+                    earliest=t; result.hit=true; result.time_of_impact=t;
+                    result.normal=normal;
+                    result.position=center+normal*std::max(radius-distance,0.0F);
+                }
+                break;
+            }
+            if(speed<=1.0e-7F) break;
+            const float step=(distance-radius)/speed;
+            if(!(step>1.0e-7F)||!std::isfinite(step)) break;
+            t+=step;
+            if(t>1.0F||t>=earliest) break;
+        }
+    }
+    return result;
+}
+
 // Ray/AABB test used by the BVH-accelerated closed-mesh containment query.
 inline bool ray_intersects_aabb(const Vec3& origin, const Vec3& direction,
                                 const TriangleAabb& bounds) noexcept {
