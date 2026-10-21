@@ -428,15 +428,16 @@ inline SweptMeshContact sweep_sphere_against_deforming_mesh(
         !std::isfinite(radius) || radius < 0.0F || max_iterations == 0 ||
         previous_mesh.triangles.size() != current_mesh.triangles.size()) return result;
 
-    float max_displacement = 0.0F;
-    for (std::size_t i = 0; i < current_mesh.triangles.size(); ++i) {
+    // Current-mesh BVH bounds are valid only for the current geometry.
+    // The caller must rebuild/refit that BVH after changing current vertices.
+    const auto triangle_displacement = [&](std::size_t i) {
+        if (i >= previous_mesh.triangles.size() || i >= current_mesh.triangles.size()) return 0.0F;
         const Triangle& a = previous_mesh.triangles[i];
         const Triangle& b = current_mesh.triangles[i];
         if (!is_finite(a.a) || !is_finite(a.b) || !is_finite(a.c) ||
-            !is_finite(b.a) || !is_finite(b.b) || !is_finite(b.c)) continue;
-        max_displacement = std::max({max_displacement, length(b.a-a.a),
-            length(b.b-a.b), length(b.c-a.c)});
-    }
+            !is_finite(b.a) || !is_finite(b.b) || !is_finite(b.c)) return 0.0F;
+        return std::max({length(b.a-a.a), length(b.b-a.b), length(b.c-a.c)});
+    };
 
     const TriangleAabb query{
         {std::min(sphere_start.x,sphere_end.x)-radius,
@@ -450,15 +451,42 @@ inline SweptMeshContact sweep_sphere_against_deforming_mesh(
             a.minimum.y<=b.maximum.y && a.maximum.y>=b.minimum.y &&
             a.minimum.z<=b.maximum.z && a.maximum.z>=b.minimum.z;
     };
-    const Vec3 pad{max_displacement,max_displacement,max_displacement};
     std::vector<std::size_t> candidates;
     if (!current_mesh.bvh_nodes.empty() && !current_mesh.bvh_triangle_indices.empty()) {
+        // Compute a conservative displacement bound per BVH node. A branch
+        // only expands by the largest vertex movement among triangles below it,
+        // rather than by the largest movement anywhere in the whole mesh.
+        std::vector<float> node_displacement(current_mesh.bvh_nodes.size(), 0.0F);
+        const auto measure_node = [&](auto&& self, int index) -> float {
+            if (index < 0 || static_cast<std::size_t>(index) >= current_mesh.bvh_nodes.size()) return 0.0F;
+            const TriangleBvhNode& node = current_mesh.bvh_nodes[static_cast<std::size_t>(index)];
+            float maximum = 0.0F;
+            if (node.is_leaf()) {
+                const std::size_t end = std::min(node.first + node.count,
+                                                 current_mesh.bvh_triangle_indices.size());
+                for (std::size_t i = node.first; i < end; ++i) {
+                    maximum = std::max(maximum,
+                        triangle_displacement(current_mesh.bvh_triangle_indices[i]));
+                }
+            } else {
+                maximum = std::max(self(self, node.left), self(self, node.right));
+            }
+            node_displacement[static_cast<std::size_t>(index)] = maximum;
+            return maximum;
+        };
+        measure_node(measure_node, 0);
+
         const auto visit=[&](auto&& self,int index)->void {
+            if (index < 0 || static_cast<std::size_t>(index) >= current_mesh.bvh_nodes.size()) return;
             const TriangleBvhNode& node=current_mesh.bvh_nodes[static_cast<std::size_t>(index)];
+            const float displacement = node_displacement[static_cast<std::size_t>(index)];
+            const Vec3 pad{displacement, displacement, displacement};
             const TriangleAabb bounds{node.bounds.minimum-pad,node.bounds.maximum+pad};
             if (!overlaps(bounds,query)) return;
             if (node.is_leaf()) {
-                for(std::size_t i=node.first;i<node.first+node.count;++i)
+                const std::size_t end = std::min(node.first + node.count,
+                                                 current_mesh.bvh_triangle_indices.size());
+                for(std::size_t i=node.first;i<end;++i)
                     candidates.push_back(current_mesh.bvh_triangle_indices[i]);
             } else { self(self,node.left); self(self,node.right); }
         };
@@ -477,7 +505,7 @@ inline SweptMeshContact sweep_sphere_against_deforming_mesh(
         const Triangle& b=current_mesh.triangles[index];
         if(!is_finite(a.a)||!is_finite(a.b)||!is_finite(a.c)||
            !is_finite(b.a)||!is_finite(b.b)||!is_finite(b.c)) continue;
-        const float speed=sphere_speed+std::max({length(b.a-a.a),length(b.b-a.b),length(b.c-a.c)});
+        const float speed=sphere_speed+triangle_displacement(index);
         const auto triangle_at=[&](float t) { return Triangle{
             a.a+(b.a-a.a)*t,a.b+(b.b-a.b)*t,a.c+(b.c-a.c)*t}; };
         float t=0.0F;
