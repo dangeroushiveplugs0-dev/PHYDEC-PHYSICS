@@ -4,3 +4,10 @@ add_executable(phydec_core_tests
 target_link_libraries(phydec_core_tests PRIVATE PHYDEC::Core)
 target_compile_features(phydec_core_tests PRIVATE cxx_std_20)
 add_test(NAME phydec_core_tests COMMAND phydec_core_tests)
+
+add_executable(phydec_collision_tests
+  collision_tests.cpp
+)
+target_link_libraries(phydec_collision_tests PRIVATE PHYDEC::Core)
+target_compile_features(phydec_collision_tests PRIVATE cxx_std_20)
+add_test(NAME phydec_collision_tests COMMAND phydec_collision_tests)
