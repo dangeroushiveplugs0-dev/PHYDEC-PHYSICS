@@ -42,4 +42,5 @@
 - [x] Add swept mesh collision query and fast-crossing regression tests.
 - [x] Add BVH acceleration for large triangle meshes.
 - [x] Add BVH refit support and regression tests for vertex-deformed meshes.
-- [ ] Add closed-mesh containment tests; triangle mesh collision currently resolves against the surface only.
+- [x] Add an odd/even ray-based point-in-closed-mesh query and tetrahedron regression tests. Caller must supply a closed, watertight mesh; boundary points are treated as outside and manifoldness is not validated.
+- [ ] Integrate containment response into particle/secondary-motion collision and add accelerated ray traversal plus moving-mesh CCD.
