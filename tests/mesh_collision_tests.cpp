@@ -119,6 +119,33 @@ int main() {
         Vec3{0.0F, 0.0F, -5.0F}, Vec3{0.0F, 0.0F, 5.0F}, mesh);
     assert(!translating_miss.hit);
 
+    // A deforming triangle moves through a stationary sphere. Candidate
+    // selection uses the current BVH expanded by the maximum vertex travel.
+    TriangleMeshCollider deform_previous;
+    deform_previous.triangles.push_back(Triangle{
+        {-1.0F, -1.0F, -2.0F}, {1.0F, -1.0F, -2.0F}, {0.0F, 1.0F, -2.0F}});
+    TriangleMeshCollider deform_current;
+    deform_current.triangles.push_back(Triangle{
+        {-1.0F, -1.0F, 2.0F}, {1.0F, -1.0F, 2.0F}, {0.0F, 1.0F, 2.0F}});
+    assert(build_triangle_mesh_bvh(deform_current, 1));
+    const SweptMeshContact deform_hit = sweep_sphere_against_deforming_mesh(
+        Vec3{0.0F, 0.0F, 0.0F}, Vec3{0.0F, 0.0F, 0.0F}, 0.1F,
+        deform_previous, deform_current);
+    assert(deform_hit.hit);
+    assert(deform_hit.time_of_impact > 0.0F && deform_hit.time_of_impact < 1.0F);
+
+    TriangleMeshCollider deform_miss_previous;
+    deform_miss_previous.triangles.push_back(Triangle{
+        {8.0F, 8.0F, -2.0F}, {10.0F, 8.0F, -2.0F}, {9.0F, 10.0F, -2.0F}});
+    TriangleMeshCollider deform_miss_current;
+    deform_miss_current.triangles.push_back(Triangle{
+        {8.0F, 8.0F, 2.0F}, {10.0F, 8.0F, 2.0F}, {9.0F, 10.0F, 2.0F}});
+    assert(build_triangle_mesh_bvh(deform_miss_current, 1));
+    const SweptMeshContact deform_miss = sweep_sphere_against_deforming_mesh(
+        Vec3{0.0F, 0.0F, 0.0F}, Vec3{0.0F, 0.0F, 0.0F}, 0.1F,
+        deform_miss_previous, deform_miss_current);
+    assert(!deform_miss.hit);
+
     // BVH build excludes invalid triangles while retaining finite triangles.
     grid.triangles.push_back(Triangle{
         {NAN, 0.0F, 0.0F}, {0.0F, 0.0F, 0.0F}, {0.0F, 1.0F, 0.0F}
