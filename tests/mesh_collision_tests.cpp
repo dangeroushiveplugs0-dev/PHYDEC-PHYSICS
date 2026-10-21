@@ -104,6 +104,21 @@ int main() {
         Vec3{0.0F, 0.0F, 2.0F}, Vec3{0.0F, 0.0F, 2.0F}, 0.1F, mesh);
     assert(!stationary.hit);
 
+    // A translating collider can hit a stationary sphere. Relative-motion
+    // sweeping reuses the static mesh BVH instead of checking every triangle.
+    const SweptMeshContact moving_collider = sweep_sphere_against_translating_mesh(
+        Vec3{0.0F, 0.0F, 0.0F}, Vec3{0.0F, 0.0F, 0.0F}, 0.1F,
+        Vec3{0.0F, 0.0F, -5.0F}, Vec3{0.0F, 0.0F, 5.0F}, mesh);
+    assert(moving_collider.hit);
+    assert(moving_collider.time_of_impact > 0.0F && moving_collider.time_of_impact < 1.0F);
+    assert(std::abs(moving_collider.position.z) < 2.0e-4F);
+    assert(moving_collider.normal.z > 0.9F);
+
+    const SweptMeshContact translating_miss = sweep_sphere_against_translating_mesh(
+        Vec3{8.0F, 8.0F, 0.0F}, Vec3{8.0F, 8.0F, 0.0F}, 0.1F,
+        Vec3{0.0F, 0.0F, -5.0F}, Vec3{0.0F, 0.0F, 5.0F}, mesh);
+    assert(!translating_miss.hit);
+
     // BVH build excludes invalid triangles while retaining finite triangles.
     grid.triangles.push_back(Triangle{
         {NAN, 0.0F, 0.0F}, {0.0F, 0.0F, 0.0F}, {0.0F, 1.0F, 0.0F}
