@@ -19,6 +19,12 @@ struct CapsuleCollider {
     float radius{0.25F};
 };
 
+// Plane normal points toward the side where particles are allowed to remain.
+struct PlaneCollider {
+    Vec3 point{};
+    Vec3 normal{0.0F, 0.0F, 1.0F};
+};
+
 struct Contact {
     Vec3 position{};
     Vec3 normal{};
@@ -74,7 +80,6 @@ inline Contact resolve_capsule_contact(Vec3& point, float particle_radius,
     const float combined_radius = particle_radius + capsule.radius;
     if (distance >= combined_radius) return contact;
 
-    // A finite fallback keeps centerline contacts deterministic and avoids NaNs.
     if (distance > 1.0e-7F) {
         contact.normal = offset / distance;
     } else if (segment_length_squared > 1.0e-12F) {
@@ -93,6 +98,30 @@ inline Contact resolve_capsule_contact(Vec3& point, float particle_radius,
     contact.penetration_depth = combined_radius - distance;
     point += contact.normal * contact.penetration_depth;
     contact.position = closest + contact.normal * capsule.radius;
+    contact.touching = true;
+    return contact;
+}
+
+// Resolves one-sided plane contact. The plane's normal is normalized internally;
+// points behind the plane are pushed to particle_radius on its allowed side.
+inline Contact resolve_plane_contact(Vec3& point, float particle_radius,
+                                     const PlaneCollider& plane) noexcept {
+    Contact contact;
+    if (!is_finite(point) || !is_finite(plane.point) || !is_finite(plane.normal) ||
+        !std::isfinite(particle_radius) || particle_radius < 0.0F) {
+        return contact;
+    }
+
+    const float normal_length = length(plane.normal);
+    if (!(normal_length > 1.0e-7F) || !std::isfinite(normal_length)) return contact;
+    const Vec3 normal = plane.normal / normal_length;
+    const float signed_distance = dot(point - plane.point, normal);
+    if (signed_distance >= particle_radius) return contact;
+
+    contact.normal = normal;
+    contact.penetration_depth = particle_radius - signed_distance;
+    point += normal * contact.penetration_depth;
+    contact.position = point - normal * particle_radius;
     contact.touching = true;
     return contact;
 }
