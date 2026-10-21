@@ -6,10 +6,17 @@
 
 namespace phydec {
 
-// Initial analytic collider. Mesh/proxy colliders will build on this query contract.
+// Analytic colliders are the first layer of the hybrid collision system.
+// Detailed mesh contacts and broad-phase acceleration will be added separately.
 struct SphereCollider {
     Vec3 center{};
     float radius{0.5F};
+};
+
+struct CapsuleCollider {
+    Vec3 start{};
+    Vec3 end{0.0F, 1.0F, 0.0F};
+    float radius{0.25F};
 };
 
 struct Contact {
@@ -20,7 +27,6 @@ struct Contact {
 };
 
 // Pushes a point outside a sphere expanded by particle_radius.
-// Returns a contact only when overlap occurs; invalid radii are treated as no contact.
 inline Contact resolve_sphere_contact(Vec3& point, float particle_radius,
                                       const SphereCollider& sphere) noexcept {
     Contact contact;
@@ -35,11 +41,58 @@ inline Contact resolve_sphere_contact(Vec3& point, float particle_radius,
     const float combined_radius = particle_radius + sphere.radius;
     if (distance >= combined_radius) return contact;
 
-    // A stable fallback normal avoids division by zero at the sphere center.
     contact.normal = distance > 1.0e-7F ? offset / distance : Vec3{0.0F, 1.0F, 0.0F};
     contact.penetration_depth = combined_radius - distance;
     point += contact.normal * contact.penetration_depth;
     contact.position = sphere.center + contact.normal * sphere.radius;
+    contact.touching = true;
+    return contact;
+}
+
+// Pushes a point outside a capsule (a line segment swept by a sphere), expanded
+// by particle_radius. Degenerate segments behave as sphere colliders.
+inline Contact resolve_capsule_contact(Vec3& point, float particle_radius,
+                                       const CapsuleCollider& capsule) noexcept {
+    Contact contact;
+    if (!is_finite(point) || !is_finite(capsule.start) || !is_finite(capsule.end) ||
+        !std::isfinite(particle_radius) || !std::isfinite(capsule.radius) ||
+        particle_radius < 0.0F || capsule.radius < 0.0F) {
+        return contact;
+    }
+
+    const Vec3 segment = capsule.end - capsule.start;
+    const float segment_length_squared = dot(segment, segment);
+    float t = 0.0F;
+    if (segment_length_squared > 1.0e-12F) {
+        t = std::clamp(dot(point - capsule.start, segment) / segment_length_squared,
+                       0.0F, 1.0F);
+    }
+
+    const Vec3 closest = capsule.start + segment * t;
+    const Vec3 offset = point - closest;
+    const float distance = length(offset);
+    const float combined_radius = particle_radius + capsule.radius;
+    if (distance >= combined_radius) return contact;
+
+    // A finite fallback keeps centerline contacts deterministic and avoids NaNs.
+    if (distance > 1.0e-7F) {
+        contact.normal = offset / distance;
+    } else if (segment_length_squared > 1.0e-12F) {
+        const Vec3 axis = normalized(segment);
+        const Vec3 candidate = std::abs(axis.y) < 0.9F
+            ? Vec3{0.0F, 1.0F, 0.0F} : Vec3{1.0F, 0.0F, 0.0F};
+        contact.normal = normalized(Vec3{
+            axis.y * candidate.z - axis.z * candidate.y,
+            axis.z * candidate.x - axis.x * candidate.z,
+            axis.x * candidate.y - axis.y * candidate.x
+        });
+    } else {
+        contact.normal = Vec3{0.0F, 1.0F, 0.0F};
+    }
+
+    contact.penetration_depth = combined_radius - distance;
+    point += contact.normal * contact.penetration_depth;
+    contact.position = closest + contact.normal * capsule.radius;
     contact.touching = true;
     return contact;
 }
