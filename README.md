@@ -4,7 +4,7 @@ A renderer-independent, C++20 physics engine in development, designed for reusab
 
 ## Current status
 
-**Secondary-motion and collision prototype.** The solver supports sphere, capsule, one-sided plane, and triangle-mesh surface contacts. Mesh collision uses the actual triangles supplied by the caller rather than approximating the mesh with a capsule or box. Mesh queries can use an explicitly built median-split BVH to prune triangles during nearest-surface queries. After vertex deformation, `refit_triangle_mesh_bvh(mesh)` updates bounds without rebuilding the split structure when triangle count/order are unchanged; rebuild with `build_triangle_mesh_bvh(mesh)` after topology or triangle-order changes. If refitting fails, stale acceleration data is cleared and queries fall back to the brute-force reference path. Mesh collision also has a conservative-advancement swept-sphere query integrated into secondary motion to reduce tunneling through thin static triangle surfaces. Closed-mesh containment can be enabled per collider with `closed_mesh_solid = true`; this is opt-in and assumes a closed, non-self-intersecting mesh, which the engine does not validate. Moving/deforming-mesh continuous collision remains unimplemented. GitHub Actions must be green on the latest commit before this code is considered verified.
+**Secondary-motion and collision prototype.** The solver supports sphere, capsule, one-sided plane, and triangle-mesh surface contacts. Mesh collision uses the actual triangles supplied by the caller rather than approximating the mesh with a capsule or box. Mesh queries can use an explicitly built median-split BVH to prune triangles during nearest-surface queries. After vertex deformation, `refit_triangle_mesh_bvh(mesh)` updates bounds without rebuilding the split structure when triangle count/order are unchanged; rebuild with `build_triangle_mesh_bvh(mesh)` after topology or triangle-order changes. If refitting fails, stale acceleration data is cleared and queries fall back to the brute-force reference path. Mesh collision also has a conservative-advancement swept-sphere query integrated into secondary motion to reduce tunneling through thin static triangle surfaces. Closed-mesh containment can be enabled per collider with `closed_mesh_solid = true`; this is opt-in and assumes a closed, non-self-intersecting mesh, which the engine does not validate. Closed-solid response is deliberately opt-in and requires a closed, watertight, non-self-intersecting mesh; topology validation is not implemented. Moving/deforming-mesh continuous collision remains unimplemented. GitHub Actions must be green on the latest commit before a change is considered verified.
 
 ## Integrate into another C++ project
 
@@ -30,6 +30,16 @@ A consuming CMake project can then use the installed package with `find_package(
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
+```
+
+## Optional performance benchmark
+
+The deterministic nearest-point benchmark compares BVH queries with the brute-force reference and checks their result checksums. Timings are informational and must be compared on the same machine/build; CI does not enforce a machine-dependent speed threshold.
+
+```sh
+cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DPHYDEC_BUILD_BENCHMARKS=ON -DPHYDEC_BUILD_TESTS=OFF
+cmake --build build-bench --target phydec_mesh_bvh_benchmark --parallel
+./build-bench/benchmarks/phydec_mesh_bvh_benchmark
 ```
 
 ## Direction
