@@ -9,14 +9,16 @@
 ## M1 — Secondary motion
 - Bone-chain settings and animation-pose input.
 - Per-point mass, damping, stiffness, gravity and external forces.
-- Analytic sphere, capsule, and one-sided plane contacts are now applied during constraint iterations.
+- Sphere, capsule, and one-sided plane contacts applied during constraint iterations.
+- Triangle-mesh surface contacts integrated into the same solver.
 - Next: improve contact stability, add collision-response tuning, and validate with automated builds.
 - Android NDK integration spike after the desktop core is green.
 
 ## M2 — Collision foundation
-- Initial analytic contact queries: sphere, capsule, and one-sided plane.
-- Mesh collision queries and proxy acceleration structures behind a common interface.
-- Explicit tolerances, broad-phase/narrow-phase tests, and performance benchmarks.
+- Implemented first narrow-phase set: sphere, capsule, one-sided plane, and triangle-mesh surface contacts.
+- Triangle meshes currently use brute-force triangle iteration; add a BVH or other acceleration structure before large meshes are used at runtime.
+- Add watertight closed-mesh containment, continuous collision detection, and moving/deforming mesh update strategies.
+- Establish broad-phase/narrow-phase interfaces, explicit tolerances, and performance benchmarks.
 
 ## M3 — Deformation and authoring
 - Soft-body prototype and attachment/weight maps.
