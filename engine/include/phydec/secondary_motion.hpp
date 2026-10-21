@@ -18,6 +18,13 @@ struct MotionPoint {
     float collision_radius{0.03F};
 };
 
+// A mesh translated between the previous and current simulation poses.
+struct TranslatingMeshCollider {
+    TriangleMeshCollider mesh{};
+    Vec3 translation_previous{};
+    Vec3 translation_current{};
+};
+
 struct SecondaryMotionSettings {
     Vec3 gravity{0.0F, 0.0F, -9.81F};
     Vec3 external_acceleration{};
@@ -30,6 +37,7 @@ struct SecondaryMotionSettings {
     std::vector<CapsuleCollider> capsule_colliders{};
     std::vector<PlaneCollider> plane_colliders{};
     std::vector<TriangleMeshCollider> mesh_colliders{};
+    std::vector<TranslatingMeshCollider> translating_mesh_colliders{};
 };
 
 // Small deterministic baseline for bone-chain secondary motion.
