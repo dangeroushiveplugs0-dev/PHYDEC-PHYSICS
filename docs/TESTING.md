@@ -34,7 +34,7 @@ To run the optional benchmarks:
 
 ```sh
 cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DPHYDEC_BUILD_BENCHMARKS=ON -DPHYDEC_BUILD_TESTS=OFF
-cmake --build build-bench --target phydec_mesh_bvh_benchmark --parallel 2
+cmake --build build-bench --target phydec_mesh_bvh_benchmark phydec_deforming_ccd_benchmark --parallel 2
 ./build-bench/benchmarks/phydec_mesh_bvh_benchmark
 ./build-bench/benchmarks/phydec_deforming_ccd_benchmark
 ```

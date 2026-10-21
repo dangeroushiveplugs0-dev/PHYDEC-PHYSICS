@@ -36,12 +36,13 @@ See [the testing guide](docs/TESTING.md) for how to verify changes from GitHub A
 
 ## Optional performance benchmark
 
-The deterministic nearest-point benchmark compares BVH queries with the brute-force reference and checks their result checksums. Timings are informational and must be compared on the same machine/build; CI does not enforce a machine-dependent speed threshold.
+The deterministic nearest-point and deforming-mesh CCD benchmarks compare accelerated results with brute-force references. Deforming CCD also reports BVH candidate counts and checks candidate reduction. Timings are informational and must be compared on the same machine/build; CI does not enforce a machine-dependent speed threshold.
 
 ```sh
 cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DPHYDEC_BUILD_BENCHMARKS=ON -DPHYDEC_BUILD_TESTS=OFF
-cmake --build build-bench --target phydec_mesh_bvh_benchmark --parallel
+cmake --build build-bench --target phydec_mesh_bvh_benchmark phydec_deforming_ccd_benchmark --parallel
 ./build-bench/benchmarks/phydec_mesh_bvh_benchmark
+./build-bench/benchmarks/phydec_deforming_ccd_benchmark
 ```
 
 ## Direction

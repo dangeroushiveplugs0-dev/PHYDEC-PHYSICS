@@ -47,3 +47,21 @@
 - [x] Add deforming-mesh swept-sphere query and integrate it into secondary motion for stable topology/linear vertex motion.
 - [x] Add deforming-CCD candidate counters, brute-force equivalence tests, and a candidate-reduction benchmark.
 - [ ] Add rotation-aware CCD, mesh topology validation, and broader refit/swept-collision profiling.
+
+
+## Release readiness
+
+### v0.1.0 — Core preview
+
+Publish when all of these are true:
+- [ ] The latest `main` commit passes the full C++ Core workflow.
+- [ ] Public headers, installed CMake package, and independent consumer are verified.
+- [ ] README clearly identifies the supported features and unsupported cases.
+- [ ] A version tag and release notes describe the API as experimental and explain lifetime/topology assumptions.
+- [ ] At least one example demonstrates secondary motion and mesh collision from a consuming project.
+
+This preview is a reusable collision/secondary-motion library, not the full planned engine. Soft-body simulation, attachment-weight authoring, and viscous-liquid simulation are not prerequisites for v0.1.0, but are prerequisites for claiming those features exist.
+
+### v1.0.0 — Stable core
+
+Before calling the engine stable, require documented API/ABI policy, stronger invalid-geometry and topology handling, broader CCD including rotational motion, deterministic regression coverage for edge cases, performance baselines, and a clear platform support matrix. Soft-body and liquid milestones remain separate feature releases unless they are explicitly added to the v1.0 scope.
