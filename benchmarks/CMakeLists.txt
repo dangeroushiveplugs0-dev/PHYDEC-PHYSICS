@@ -1,3 +1,7 @@
 add_executable(phydec_mesh_bvh_benchmark mesh_bvh_benchmark.cpp)
 target_link_libraries(phydec_mesh_bvh_benchmark PRIVATE PHYDEC::Core)
 target_compile_features(phydec_mesh_bvh_benchmark PRIVATE cxx_std_20)
+
+add_executable(phydec_deforming_ccd_benchmark deforming_ccd_benchmark.cpp)
+target_link_libraries(phydec_deforming_ccd_benchmark PRIVATE PHYDEC::Core)
+target_compile_features(phydec_deforming_ccd_benchmark PRIVATE cxx_std_20)
