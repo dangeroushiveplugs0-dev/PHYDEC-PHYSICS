@@ -146,6 +146,42 @@ int main() {
         deform_miss_previous, deform_miss_current);
     assert(!deform_miss.hit);
 
+    // A multi-triangle deforming mesh must return the same earliest contact
+    // with BVH candidate pruning enabled and with the brute-force fallback.
+    // Only triangle zero moves through the sphere; the other triangles are
+    // distant distractors to exercise the hierarchy's expanded bounds.
+    TriangleMeshCollider deform_grid_previous;
+    deform_grid_previous.triangles.push_back(Triangle{
+        {-1.0F, -1.0F, -2.0F}, {1.0F, -1.0F, -2.0F}, {0.0F, 1.0F, -2.0F}});
+    TriangleMeshCollider deform_grid_current;
+    deform_grid_current.triangles.push_back(Triangle{
+        {-1.0F, -1.0F, 2.0F}, {1.0F, -1.0F, 2.0F}, {0.0F, 1.0F, 2.0F}});
+    for (int x = 0; x < 12; ++x) {
+        for (int y = 0; y < 12; ++y) {
+            const float x0 = 10.0F + static_cast<float>(x) * 2.0F;
+            const float y0 = 10.0F + static_cast<float>(y) * 2.0F;
+            const Triangle distractor{
+                {x0, y0, 0.0F}, {x0 + 1.0F, y0, 0.0F}, {x0, y0 + 1.0F, 0.0F}};
+            deform_grid_previous.triangles.push_back(distractor);
+            deform_grid_current.triangles.push_back(distractor);
+        }
+    }
+    assert(build_triangle_mesh_bvh(deform_grid_current, 2));
+    const SweptMeshContact deform_grid_bvh = sweep_sphere_against_deforming_mesh(
+        Vec3{0.0F, 0.0F, 0.0F}, Vec3{0.0F, 0.0F, 0.0F}, 0.1F,
+        deform_grid_previous, deform_grid_current);
+    TriangleMeshCollider deform_grid_brute = deform_grid_current;
+    deform_grid_brute.bvh_nodes.clear();
+    deform_grid_brute.bvh_triangle_indices.clear();
+    const SweptMeshContact deform_grid_reference = sweep_sphere_against_deforming_mesh(
+        Vec3{0.0F, 0.0F, 0.0F}, Vec3{0.0F, 0.0F, 0.0F}, 0.1F,
+        deform_grid_previous, deform_grid_brute);
+    assert(deform_grid_bvh.hit && deform_grid_reference.hit);
+    assert(std::abs(deform_grid_bvh.time_of_impact -
+                    deform_grid_reference.time_of_impact) < 1.0e-4F);
+    assert(length(deform_grid_bvh.position - deform_grid_reference.position) < 1.0e-4F);
+    assert(length(deform_grid_bvh.normal - deform_grid_reference.normal) < 1.0e-4F);
+
     // BVH build excludes invalid triangles while retaining finite triangles.
     grid.triangles.push_back(Triangle{
         {NAN, 0.0F, 0.0F}, {0.0F, 0.0F, 0.0F}, {0.0F, 1.0F, 0.0F}
