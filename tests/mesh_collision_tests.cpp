@@ -112,6 +112,15 @@ int main() {
     assert(grid.bvh_triangle_indices.size() + 1 == grid.triangles.size());
     const auto after_rebuild = closest_point_on_mesh(Vec3{2.0F, 2.0F, 0.5F}, grid);
     assert(after_rebuild.valid);
+
+    // A triangle excluded during build may not silently reappear during refit.
+    // Changing finite/non-finite membership requires rebuilding the hierarchy.
+    grid.triangles.back().a = Vec3{0.0F, 0.0F, 0.0F};
+    assert(!refit_triangle_mesh_bvh(grid));
+    assert(grid.bvh_nodes.empty());
+    assert(grid.bvh_triangle_indices.empty());
+    assert(build_triangle_mesh_bvh(grid, 4));
+    assert(grid.bvh_triangle_indices.size() == grid.triangles.size());
     // Deforming geometry can refit the existing hierarchy without rebuilding
     // its split structure, and results must still match the brute-force reference.
     TriangleMeshCollider moving_grid = grid;
