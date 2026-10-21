@@ -87,7 +87,7 @@ void SecondaryMotionChain::step(const SecondaryMotionSettings& settings) {
                     const Vec3 normal_part = normal * normal_displacement;
                     Vec3 tangent_part = displacement - normal_part;
                     const float friction = std::clamp(settings.collision_friction, 0.0F, 1.0F);
-                    tangent_part *= (1.0F - friction);
+                    tangent_part = tangent_part * (1.0F - friction);
                     displacement = tangent_part - normal_part * restitution;
                     point.previous_position = point.position - displacement;
                 }
