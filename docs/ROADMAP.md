@@ -9,12 +9,13 @@
 ## M1 — Secondary motion
 - Bone-chain settings and animation-pose input.
 - Per-point mass, damping, stiffness, gravity and external forces.
-- Stable constraints, collision primitives, and regression tests.
+- Analytic sphere, capsule, and one-sided plane contacts are now applied during constraint iterations.
+- Next: improve contact stability, add collision-response tuning, and validate with automated builds.
 - Android NDK integration spike after the desktop core is green.
 
 ## M2 — Collision foundation
 - Initial analytic contact queries: sphere, capsule, and one-sided plane.
-- Next: connect contacts to the motion solver, then add mesh collision queries and proxy acceleration structures behind a common interface.
+- Mesh collision queries and proxy acceleration structures behind a common interface.
 - Explicit tolerances, broad-phase/narrow-phase tests, and performance benchmarks.
 
 ## M3 — Deformation and authoring
