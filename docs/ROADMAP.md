@@ -18,7 +18,7 @@
 - Implemented first narrow-phase set: sphere, capsule, one-sided plane, and triangle-mesh surface contacts.
 - Added optional median-split BVH acceleration with nearest-point AABB pruning. Added BVH refitting for vertex deformation when triangle count/order remain unchanged; rebuild when topology or triangle ordering changes. Brute-force fallback remains available when no valid BVH exists.
 - Added conservative-advancement swept-sphere collision against triangle surfaces in secondary motion; validate limits and performance with more cases. Add watertight closed-mesh containment and moving/deforming mesh CCD/update strategies.
-- Establish broad-phase/narrow-phase interfaces, explicit tolerances, and performance benchmarks.
+- Establish broad-phase/narrow-phase interfaces and explicit tolerances. An opt-in nearest-point benchmark now exists; extend it to BVH refit and swept collision workloads.
 
 ## M3 — Deformation and authoring
 - Soft-body prototype and attachment/weight maps.
