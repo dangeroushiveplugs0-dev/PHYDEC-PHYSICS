@@ -34,3 +34,11 @@
 - Every feature lands with tests and documented limitations.
 - Do not claim Android performance until measured on-device.
 - KawaiiPhysics is a feature/architecture reference, not code to copy blindly; preserve attribution and license obligations if code is reused.
+
+
+## Collision response follow-up
+
+- [x] Add configurable friction and restitution to secondary-motion contact response.
+- [ ] Add swept collision tests for fast-moving points to reduce tunneling.
+- [ ] Add BVH acceleration for large triangle meshes.
+- [ ] Add closed-mesh containment tests; triangle mesh collision currently resolves against the surface only.
