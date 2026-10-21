@@ -496,26 +496,64 @@ inline bool point_inside_closed_mesh(const Vec3& point,
     const Vec3 direction = normalized(Vec3{1.0F, 0.37139067F, 0.52910316F});
     std::size_t intersections = 0;
     constexpr float epsilon = 1.0e-7F;
-    for (const Triangle& triangle : mesh.triangles) {
-        if (!is_finite(triangle.a) || !is_finite(triangle.b) || !is_finite(triangle.c)) continue;
+    const auto ray_hits_triangle = [&](const Triangle& triangle) {
+        if (!is_finite(triangle.a) || !is_finite(triangle.b) || !is_finite(triangle.c)) return;
         const Vec3 edge1 = triangle.b - triangle.a;
         const Vec3 edge2 = triangle.c - triangle.a;
         const Vec3 pvec{direction.y * edge2.z - direction.z * edge2.y,
                         direction.z * edge2.x - direction.x * edge2.z,
                         direction.x * edge2.y - direction.y * edge2.x};
         const float determinant = dot(edge1, pvec);
-        if (std::abs(determinant) <= epsilon) continue;
+        if (std::abs(determinant) <= epsilon) return;
         const float inverse = 1.0F / determinant;
         const Vec3 tvec = point - triangle.a;
         const float u = dot(tvec, pvec) * inverse;
-        if (u < -epsilon || u > 1.0F + epsilon) continue;
+        if (u < -epsilon || u > 1.0F + epsilon) return;
         const Vec3 qvec{tvec.y * edge1.z - tvec.z * edge1.y,
                         tvec.z * edge1.x - tvec.x * edge1.z,
                         tvec.x * edge1.y - tvec.y * edge1.x};
         const float v = dot(direction, qvec) * inverse;
-        if (v < -epsilon || u + v > 1.0F + epsilon) continue;
+        if (v < -epsilon || u + v > 1.0F + epsilon) return;
         const float distance = dot(edge2, qvec) * inverse;
         if (distance > surface_tolerance) ++intersections;
+    };
+    const auto ray_hits_bounds = [&](const TriangleAabb& bounds) {
+        float near_t = 0.0F;
+        float far_t = INFINITY;
+        for (int axis = 0; axis < 3; ++axis) {
+            const float origin = axis == 0 ? point.x : (axis == 1 ? point.y : point.z);
+            const float dir = axis == 0 ? direction.x : (axis == 1 ? direction.y : direction.z);
+            const float low = axis == 0 ? bounds.minimum.x : (axis == 1 ? bounds.minimum.y : bounds.minimum.z);
+            const float high = axis == 0 ? bounds.maximum.x : (axis == 1 ? bounds.maximum.y : bounds.maximum.z);
+            if (std::abs(dir) <= epsilon) {
+                if (origin < low || origin > high) return false;
+                continue;
+            }
+            float a = (low - origin) / dir;
+            float b = (high - origin) / dir;
+            if (a > b) std::swap(a, b);
+            near_t = std::max(near_t, a);
+            far_t = std::min(far_t, b);
+            if (near_t > far_t) return false;
+        }
+        return far_t >= 0.0F;
+    };
+    if (mesh.bvh_nodes.empty() || mesh.bvh_triangle_indices.empty()) {
+        for (const Triangle& triangle : mesh.triangles) ray_hits_triangle(triangle);
+    } else {
+        const auto visit = [&](auto&& self, int node_index) -> void {
+            const TriangleBvhNode& node = mesh.bvh_nodes[static_cast<std::size_t>(node_index)];
+            if (!ray_hits_bounds(node.bounds)) return;
+            if (node.is_leaf()) {
+                for (std::size_t i = node.first; i < node.first + node.count; ++i) {
+                    ray_hits_triangle(mesh.triangles[mesh.bvh_triangle_indices[i]]);
+                }
+                return;
+            }
+            self(self, node.left);
+            self(self, node.right);
+        };
+        visit(visit, 0);
     }
     return (intersections % 2U) == 1U;
 }
