@@ -113,7 +113,13 @@ void SecondaryMotionChain::step(const SecondaryMotionSettings& settings) {
                         surface_contact = resolve_mesh_contact(
                             point.position, point.collision_radius, collider);
                     }
-                    if (surface_contact.touching) return surface_contact;
+                    if (surface_contact.touching) {
+                        // Surface projection can point inward when a point starts
+                        // just inside a closed solid. Solid containment takes priority.
+                        const Contact solid_contact = resolve_closed_mesh_contact(
+                            point.position, point.collision_radius, collider);
+                        return solid_contact.touching ? solid_contact : surface_contact;
+                    }
                     return resolve_closed_mesh_contact(
                         point.position, point.collision_radius, collider);
                 });
