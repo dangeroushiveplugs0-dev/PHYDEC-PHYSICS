@@ -37,8 +37,11 @@ if(PHYDEC_INSTALL)
     NAMESPACE PHYDEC::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/PHYDEC
   )
-  file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/PHYDECConfig.cmake
-    "include(\\"\${CMAKE_CURRENT_LIST_DIR}/PHYDECTargets.cmake\\")\n")
+  configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/PHYDECConfig.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/PHYDECConfig.cmake
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/PHYDEC
+  )
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/PHYDECConfig.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/PHYDEC
   )
