@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include "phydec/collision_mesh.hpp"
 #include "phydec/collision.hpp"
 #include "phydec/math/vec3.hpp"
 
@@ -25,6 +26,7 @@ struct SecondaryMotionSettings {
     std::vector<SphereCollider> sphere_colliders{};
     std::vector<CapsuleCollider> capsule_colliders{};
     std::vector<PlaneCollider> plane_colliders{};
+    std::vector<TriangleMeshCollider> mesh_colliders{};
 };
 
 // Small deterministic baseline for bone-chain secondary motion.
