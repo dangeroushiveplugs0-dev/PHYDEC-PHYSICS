@@ -86,6 +86,24 @@ int main() {
         assert(length(accelerated.position - reference.position) < 1.0e-4F);
     }
 
+
+    // Continuous collision query catches a fast sphere crossing a thin triangle
+    // even when its final position is already on the far side of the surface.
+    const SweptMeshContact swept = sweep_sphere_against_mesh(
+        Vec3{0.0F, 0.0F, 5.0F}, Vec3{0.0F, 0.0F, -5.0F}, 0.1F, mesh);
+    assert(swept.hit);
+    assert(swept.time_of_impact > 0.0F && swept.time_of_impact < 1.0F);
+    assert(std::abs(swept.position.z - 0.1F) < 2.0e-4F);
+    assert(swept.normal.z > 0.9F);
+
+    const SweptMeshContact swept_miss = sweep_sphere_against_mesh(
+        Vec3{8.0F, 8.0F, 5.0F}, Vec3{8.0F, 8.0F, -5.0F}, 0.1F, mesh);
+    assert(!swept_miss.hit);
+
+    const SweptMeshContact stationary = sweep_sphere_against_mesh(
+        Vec3{0.0F, 0.0F, 2.0F}, Vec3{0.0F, 0.0F, 2.0F}, 0.1F, mesh);
+    assert(!stationary.hit);
+
     // BVH build excludes invalid triangles while retaining finite triangles.
     grid.triangles.push_back(Triangle{
         {NAN, 0.0F, 0.0F}, {0.0F, 0.0F, 0.0F}, {0.0F, 1.0F, 0.0F}
