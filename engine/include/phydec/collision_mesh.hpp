@@ -415,6 +415,13 @@ inline SweptMeshContact sweep_sphere_against_translating_mesh(
     return result;
 }
 
+// Optional deterministic counters for profiling deforming-mesh CCD candidate pruning.
+struct DeformingMeshSweepStats {
+    std::size_t bvh_nodes_visited{0};
+    std::size_t candidate_triangles{0};
+    std::size_t triangles_tested{0};
+};
+
 // Continuous sphere query against linearly deforming triangles.
 // Previous/current meshes must have identical triangle count and ordering.
 // Current-mesh BVH node bounds are expanded by the maximum vertex displacement,
@@ -422,8 +429,9 @@ inline SweptMeshContact sweep_sphere_against_translating_mesh(
 inline SweptMeshContact sweep_sphere_against_deforming_mesh(
     const Vec3& sphere_start, const Vec3& sphere_end, float radius,
     const TriangleMeshCollider& previous_mesh, const TriangleMeshCollider& current_mesh,
-    unsigned max_iterations = 32) {
+    unsigned max_iterations = 32, DeformingMeshSweepStats* stats = nullptr) {
     SweptMeshContact result;
+    if (stats != nullptr) *stats = {};
     if (!is_finite(sphere_start) || !is_finite(sphere_end) ||
         !std::isfinite(radius) || radius < 0.0F || max_iterations == 0 ||
         previous_mesh.triangles.size() != current_mesh.triangles.size()) return result;
@@ -479,6 +487,7 @@ inline SweptMeshContact sweep_sphere_against_deforming_mesh(
         const auto visit=[&](auto&& self,int index)->void {
             if (index < 0 || static_cast<std::size_t>(index) >= current_mesh.bvh_nodes.size()) return;
             const TriangleBvhNode& node=current_mesh.bvh_nodes[static_cast<std::size_t>(index)];
+            if (stats != nullptr) ++stats->bvh_nodes_visited;
             const float displacement = node_displacement[static_cast<std::size_t>(index)];
             const Vec3 pad{displacement, displacement, displacement};
             const TriangleAabb bounds{node.bounds.minimum-pad,node.bounds.maximum+pad};
@@ -496,10 +505,12 @@ inline SweptMeshContact sweep_sphere_against_deforming_mesh(
         for(std::size_t i=0;i<current_mesh.triangles.size();++i) candidates.push_back(i);
     }
 
+    if (stats != nullptr) stats->candidate_triangles = candidates.size();
     const Vec3 travel=sphere_end-sphere_start;
     const float sphere_speed=length(travel);
     float earliest=2.0F;
     for(const std::size_t index:candidates) {
+        if (stats != nullptr) ++stats->triangles_tested;
         if(index>=previous_mesh.triangles.size() || index>=current_mesh.triangles.size()) continue;
         const Triangle& a=previous_mesh.triangles[index];
         const Triangle& b=current_mesh.triangles[index];

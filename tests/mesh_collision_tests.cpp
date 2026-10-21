@@ -167,9 +167,14 @@ int main() {
         }
     }
     assert(build_triangle_mesh_bvh(deform_grid_current, 2));
+    DeformingMeshSweepStats deform_grid_stats;
     const SweptMeshContact deform_grid_bvh = sweep_sphere_against_deforming_mesh(
         Vec3{0.0F, 0.0F, 0.0F}, Vec3{0.0F, 0.0F, 0.0F}, 0.1F,
-        deform_grid_previous, deform_grid_current);
+        deform_grid_previous, deform_grid_current, 32, &deform_grid_stats);
+    assert(deform_grid_stats.bvh_nodes_visited > 0);
+    assert(deform_grid_stats.candidate_triangles > 0);
+    assert(deform_grid_stats.candidate_triangles < deform_grid_current.triangles.size() / 10);
+    assert(deform_grid_stats.triangles_tested == deform_grid_stats.candidate_triangles);
     TriangleMeshCollider deform_grid_brute = deform_grid_current;
     deform_grid_brute.bvh_nodes.clear();
     deform_grid_brute.bvh_triangle_indices.clear();
