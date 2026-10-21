@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include "phydec/collision.hpp"
 #include "phydec/math/vec3.hpp"
 
 namespace phydec {
@@ -13,6 +14,7 @@ struct MotionPoint {
     float stiffness{0.25F};
     float damping{0.08F};
     float mass{1.0F};
+    float collision_radius{0.03F};
 };
 
 struct SecondaryMotionSettings {
@@ -20,6 +22,9 @@ struct SecondaryMotionSettings {
     Vec3 external_acceleration{};
     float fixed_delta_seconds{1.0F / 60.0F};
     unsigned constraint_iterations{4};
+    std::vector<SphereCollider> sphere_colliders{};
+    std::vector<CapsuleCollider> capsule_colliders{};
+    std::vector<PlaneCollider> plane_colliders{};
 };
 
 // Small deterministic baseline for bone-chain secondary motion.
