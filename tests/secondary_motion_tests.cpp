@@ -73,7 +73,7 @@ int main() {
         {-2.0F, -2.0F, 0.0F}, {2.0F, -2.0F, 0.0F}, {0.0F, 2.0F, 0.0F}
     });
     moving_settings.translating_mesh_colliders.push_back(
-        phydec::TranslatingMeshCollider{moving_floor, {0.0F, 0.0F, -1.0F},
+        phydec::TranslatingMeshCollider{&moving_floor, {0.0F, 0.0F, -1.0F},
                                         {0.0F, 0.0F, 1.0F}});
     moving_chain.step(moving_settings);
     assert(moving_chain.valid());

@@ -18,9 +18,10 @@ struct MotionPoint {
     float collision_radius{0.03F};
 };
 
-// A mesh translated between the previous and current simulation poses.
+// A non-owning reference to mesh geometry translated between simulation poses.
+// The mesh must outlive every settings object and step() call that references it.
 struct TranslatingMeshCollider {
-    TriangleMeshCollider mesh{};
+    const TriangleMeshCollider* mesh{nullptr};
     Vec3 translation_previous{};
     Vec3 translation_current{};
 };

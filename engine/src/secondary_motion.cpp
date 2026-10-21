@@ -125,10 +125,11 @@ void SecondaryMotionChain::step(const SecondaryMotionSettings& settings) {
                 });
             }
             for (const auto& moving : settings.translating_mesh_colliders) {
+                if (moving.mesh == nullptr) continue;
                 preserve_velocity_contact([&]() {
                     const SweptMeshContact swept = sweep_sphere_against_translating_mesh(
                         point.previous_position, point.position, point.collision_radius,
-                        moving.translation_previous, moving.translation_current, moving.mesh);
+                        moving.translation_previous, moving.translation_current, *moving.mesh);
                     Contact contact;
                     if (swept.hit) {
                         point.position = swept.position;
@@ -138,7 +139,7 @@ void SecondaryMotionChain::step(const SecondaryMotionSettings& settings) {
                         return contact;
                     }
                     point.position -= moving.translation_current;
-                    contact = resolve_mesh_contact(point.position, point.collision_radius, moving.mesh);
+                    contact = resolve_mesh_contact(point.position, point.collision_radius, *moving.mesh);
                     point.position += moving.translation_current;
                     contact.position += moving.translation_current;
                     return contact;
