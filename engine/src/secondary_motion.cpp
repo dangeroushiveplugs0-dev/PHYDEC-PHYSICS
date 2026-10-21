@@ -63,8 +63,9 @@ void SecondaryMotionChain::step(const SecondaryMotionSettings& settings) {
             }
         }
 
-        // Keep contact corrections from injecting artificial velocity: move the
-        // previous position by the same correction as the current position.
+        // Apply all collision types inside each constraint iteration.
+        // Shift previous_position with the positional correction to avoid adding
+        // fake velocity solely because a contact projected the point outward.
         for (std::size_t i = 1; i < points_.size(); ++i) {
             auto& point = points_[i];
             const auto preserve_velocity_contact = [&point](auto&& resolver) {
@@ -86,6 +87,11 @@ void SecondaryMotionChain::step(const SecondaryMotionSettings& settings) {
             for (const auto& collider : settings.plane_colliders) {
                 preserve_velocity_contact([&]() {
                     return resolve_plane_contact(point.position, point.collision_radius, collider);
+                });
+            }
+            for (const auto& collider : settings.mesh_colliders) {
+                preserve_velocity_contact([&]() {
+                    return resolve_mesh_contact(point.position, point.collision_radius, collider);
                 });
             }
         }
