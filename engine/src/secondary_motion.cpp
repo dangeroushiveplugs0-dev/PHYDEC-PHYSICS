@@ -76,21 +76,12 @@ void SecondaryMotionChain::step(const SecondaryMotionSettings& settings) {
                 // First remove artificial velocity introduced by positional projection.
                 point.previous_position += point.position - before;
 
-                // Verlet displacement represents per-step velocity. Remove inward
-                // normal motion, apply restitution, then damp tangential motion.
-                const Vec3 normal = normalized(contact.normal);
-                if (!is_finite(normal) || length(normal) <= 1.0e-7F) return;
-                Vec3 displacement = point.position - point.previous_position;
-                const float normal_displacement = dot(displacement, normal);
-                if (normal_displacement < 0.0F) {
-                    const float restitution = std::clamp(settings.collision_restitution, 0.0F, 1.0F);
-                    const Vec3 normal_part = normal * normal_displacement;
-                    Vec3 tangent_part = displacement - normal_part;
-                    const float friction = std::clamp(settings.collision_friction, 0.0F, 1.0F);
-                    tangent_part = tangent_part * (1.0F - friction);
-                    displacement = tangent_part - normal_part * restitution;
-                    point.previous_position = point.position - displacement;
-                }
+                // Verlet displacement represents per-step velocity.
+                const Vec3 displacement = point.position - point.previous_position;
+                const Vec3 response = apply_contact_response(
+                    displacement, contact, settings.collision_friction,
+                    settings.collision_restitution);
+                point.previous_position = point.position - response;
             };
 
             for (const auto& collider : settings.sphere_colliders) {
