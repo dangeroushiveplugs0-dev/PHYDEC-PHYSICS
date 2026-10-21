@@ -193,6 +193,61 @@ inline bool build_triangle_mesh_bvh(TriangleMeshCollider& mesh,
     return !mesh.bvh_nodes.empty();
 }
 
+// Refit an existing BVH after vertex positions change while triangle count/order stay
+// unchanged. This avoids the cost of rebuilding the split structure each frame.
+// Returns false if the hierarchy is absent or geometry is invalid; on failure the
+// hierarchy is cleared so queries safely use the brute-force reference path.
+inline bool refit_triangle_mesh_bvh(TriangleMeshCollider& mesh) {
+    if (mesh.bvh_nodes.empty() || mesh.bvh_triangle_indices.empty()) return false;
+
+    for (const std::size_t index : mesh.bvh_triangle_indices) {
+        if (index >= mesh.triangles.size()) {
+            mesh.bvh_nodes.clear();
+            mesh.bvh_triangle_indices.clear();
+            return false;
+        }
+        const Triangle& triangle = mesh.triangles[index];
+        if (!is_finite(triangle.a) || !is_finite(triangle.b) || !is_finite(triangle.c)) {
+            mesh.bvh_nodes.clear();
+            mesh.bvh_triangle_indices.clear();
+            return false;
+        }
+    }
+
+    // Builder emits parents before children, so reverse order visits children first.
+    for (std::size_t i = mesh.bvh_nodes.size(); i-- > 0;) {
+        TriangleBvhNode& node = mesh.bvh_nodes[i];
+        if (node.is_leaf()) {
+            bool initialized = false;
+            TriangleAabb bounds{};
+            for (std::size_t j = node.first; j < node.first + node.count; ++j) {
+                const std::size_t triangle_index = mesh.bvh_triangle_indices[j];
+                const TriangleAabb triangle_box = triangle_bounds(mesh.triangles[triangle_index]);
+                bounds = initialized ? merge_aabb(bounds, triangle_box) : triangle_box;
+                initialized = true;
+            }
+            if (!initialized) {
+                mesh.bvh_nodes.clear();
+                mesh.bvh_triangle_indices.clear();
+                return false;
+            }
+            node.bounds = bounds;
+        } else {
+            if (node.left < 0 || node.right < 0 ||
+                static_cast<std::size_t>(node.left) >= mesh.bvh_nodes.size() ||
+                static_cast<std::size_t>(node.right) >= mesh.bvh_nodes.size()) {
+                mesh.bvh_nodes.clear();
+                mesh.bvh_triangle_indices.clear();
+                return false;
+            }
+            node.bounds = merge_aabb(
+                mesh.bvh_nodes[static_cast<std::size_t>(node.left)].bounds,
+                mesh.bvh_nodes[static_cast<std::size_t>(node.right)].bounds);
+        }
+    }
+    return true;
+}
+
 inline ClosestTrianglePoint closest_point_on_mesh(const Vec3& point,
                                                    const TriangleMeshCollider& mesh) noexcept {
     ClosestTrianglePoint best;
