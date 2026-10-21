@@ -23,6 +23,9 @@ struct SecondaryMotionSettings {
     Vec3 external_acceleration{};
     float fixed_delta_seconds{1.0F / 60.0F};
     unsigned constraint_iterations{4};
+    // Applied to incoming Verlet displacement after a contact. Values are clamped to [0, 1].
+    float collision_friction{0.0F};
+    float collision_restitution{0.0F};
     std::vector<SphereCollider> sphere_colliders{};
     std::vector<CapsuleCollider> capsule_colliders{};
     std::vector<PlaneCollider> plane_colliders{};
