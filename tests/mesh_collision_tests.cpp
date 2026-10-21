@@ -189,6 +189,21 @@ int main() {
     assert(!point_inside_closed_mesh(Vec3{0.2F, 0.2F, 0.0F}, tetrahedron));
     assert(!point_inside_closed_mesh(Vec3{NAN, 0.0F, 0.0F}, tetrahedron));
     assert(!point_inside_closed_mesh(Vec3{0.1F, 0.1F, 0.1F}, empty_mesh));
+    assert(build_triangle_mesh_bvh(tetrahedron, 1));
+    const TriangleMeshCollider tetrahedron_brute_force = [&]() {
+        TriangleMeshCollider copy = tetrahedron;
+        copy.bvh_nodes.clear();
+        copy.bvh_triangle_indices.clear();
+        return copy;
+    }();
+    const Vec3 containment_queries[] = {
+        {0.1F, 0.1F, 0.1F}, {1.2F, 1.2F, 1.2F}, {0.2F, 0.2F, 0.0F},
+        {-0.5F, 0.2F, 0.2F}, {0.25F, 0.25F, 0.25F}
+    };
+    for (const Vec3& query : containment_queries) {
+        assert(point_inside_closed_mesh(query, tetrahedron) ==
+               point_inside_closed_mesh(query, tetrahedron_brute_force));
+    }
 
     return 0;
 }
