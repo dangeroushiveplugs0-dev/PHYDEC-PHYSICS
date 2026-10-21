@@ -66,5 +66,23 @@ int main() {
     Vec3 invalid_plane_point{};
     const PlaneCollider invalid_plane{{}, {}};
     assert(!resolve_plane_contact(invalid_plane_point, 0.1F, invalid_plane).touching);
+
+    // Contact response independently verifies tangent friction and bounce.
+    Contact response_contact;
+    response_contact.touching = true;
+    response_contact.normal = {0.0F, 0.0F, 1.0F};
+    const Vec3 incoming{1.0F, 0.0F, -2.0F};
+    const Vec3 response = apply_contact_response(incoming, response_contact, 0.5F, 0.25F);
+    assert(std::abs(response.x - 0.5F) < 1.0e-5F);
+    assert(std::abs(response.y) < 1.0e-5F);
+    assert(std::abs(response.z - 0.5F) < 1.0e-5F);
+
+    const Vec3 frictionless = apply_contact_response(incoming, response_contact, 0.0F, 0.0F);
+    assert(std::abs(frictionless.x - 1.0F) < 1.0e-5F);
+    assert(std::abs(frictionless.z) < 1.0e-5F);
+
+    const Vec3 clamped = apply_contact_response(incoming, response_contact, 5.0F, 5.0F);
+    assert(std::abs(clamped.x) < 1.0e-5F);
+    assert(std::abs(clamped.z - 2.0F) < 1.0e-5F);
     return 0;
 }
