@@ -65,6 +65,20 @@ int main() {
     assert(mesh_chain.points()[1].position.z >=
            mesh_chain.points()[1].collision_radius - 1.0e-4F);
 
+    SecondaryMotionChain moving_chain({{0.0F, 0.0F, 1.0F}, {0.0F, 0.0F, 0.0F}});
+    SecondaryMotionSettings moving_settings;
+    moving_settings.gravity = {};
+    TriangleMeshCollider moving_floor;
+    moving_floor.triangles.push_back(Triangle{
+        {-2.0F, -2.0F, 0.0F}, {2.0F, -2.0F, 0.0F}, {0.0F, 2.0F, 0.0F}
+    });
+    moving_settings.translating_mesh_colliders.push_back(
+        phydec::TranslatingMeshCollider{moving_floor, {0.0F, 0.0F, -1.0F},
+                                        {0.0F, 0.0F, 1.0F}});
+    moving_chain.step(moving_settings);
+    assert(moving_chain.valid());
+    assert(std::abs(moving_chain.points()[1].position.z) < 1.0e-3F);
+
     // Explicit closed-solid mode should eject a secondary-motion point that
     // starts inside a closed collider. Ordinary triangle surfaces stay surface-only.
     SecondaryMotionChain solid_chain({{0.0F, 0.0F, 0.0F}, {0.1F, 0.0F, 0.0F}});
