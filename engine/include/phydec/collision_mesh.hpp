@@ -369,6 +369,120 @@ inline SweptMeshContact sweep_sphere_against_mesh(const Vec3& start, const Vec3&
     return result;
 }
 
+// Ray/AABB test used by the BVH-accelerated closed-mesh containment query.
+inline bool ray_intersects_aabb(const Vec3& origin, const Vec3& direction,
+                                const TriangleAabb& bounds) noexcept {
+    float near_t = 0.0F;
+    float far_t = INFINITY;
+    const float origins[3] = {origin.x, origin.y, origin.z};
+    const float directions[3] = {direction.x, direction.y, direction.z};
+    const float minimums[3] = {bounds.minimum.x, bounds.minimum.y, bounds.minimum.z};
+    const float maximums[3] = {bounds.maximum.x, bounds.maximum.y, bounds.maximum.z};
+    for (int axis = 0; axis < 3; ++axis) {
+        if (std::abs(directions[axis]) <= 1.0e-8F) {
+            if (origins[axis] < minimums[axis] || origins[axis] > maximums[axis]) return false;
+            continue;
+        }
+        float a = (minimums[axis] - origins[axis]) / directions[axis];
+        float b = (maximums[axis] - origins[axis]) / directions[axis];
+        if (a > b) std::swap(a, b);
+        near_t = std::max(near_t, a);
+        far_t = std::min(far_t, b);
+        if (far_t < near_t) return false;
+    }
+    return far_t >= 0.0F;
+}
+
+inline bool ray_intersects_triangle(const Vec3& origin, const Vec3& direction,
+                                    const Triangle& triangle, float& distance) noexcept {
+    const Vec3 edge1 = triangle.b - triangle.a;
+    const Vec3 edge2 = triangle.c - triangle.a;
+    const Vec3 p = cross(direction, edge2);
+    const float determinant = dot(edge1, p);
+    if (!std::isfinite(determinant) || std::abs(determinant) <= 1.0e-8F) return false;
+    const float inverse = 1.0F / determinant;
+    const Vec3 t = origin - triangle.a;
+    const float u = dot(t, p) * inverse;
+    if (u < -1.0e-6F || u > 1.0F + 1.0e-6F) return false;
+    const Vec3 q = cross(t, edge1);
+    const float v = dot(direction, q) * inverse;
+    if (v < -1.0e-6F || u + v > 1.0F + 1.0e-6F) return false;
+    distance = dot(edge2, q) * inverse;
+    return std::isfinite(distance) && distance > 1.0e-6F;
+}
+
+// Classifies a point using odd/even ray crossings. Requires a closed, non-self-
+// intersecting triangle surface. Points on the surface are reported separately
+// as boundary/unknown so callers can resolve contact without a false inside flag.
+// A skew ray avoids common axis-aligned edge/vertex degeneracies. BVH traversal
+// skips nodes the ray cannot reach; the no-BVH path remains a reference fallback.
+enum class MeshContainment { outside, inside, boundary_or_unknown };
+
+inline MeshContainment classify_point_against_closed_mesh(
+    const Vec3& point, const TriangleMeshCollider& mesh,
+    float surface_tolerance = 1.0e-5F) noexcept {
+    if (!is_finite(point) || !std::isfinite(surface_tolerance) || surface_tolerance < 0.0F ||
+        mesh.triangles.empty()) return MeshContainment::boundary_or_unknown;
+
+    const ClosestTrianglePoint nearest = closest_point_on_mesh(point, mesh);
+    if (!nearest.valid) return MeshContainment::boundary_or_unknown;
+    if (nearest.distance_squared <= surface_tolerance * surface_tolerance) {
+        return MeshContainment::boundary_or_unknown;
+    }
+
+    const Vec3 direction = normalized(Vec3{1.0F, 0.37139067F, 0.5291031F});
+    std::size_t crossings = 0;
+    bool ambiguous = false;
+    const auto consider_triangle = [&](std::size_t index) {
+        if (index >= mesh.triangles.size()) return;
+        const Triangle& triangle = mesh.triangles[index];
+        if (!is_finite(triangle.a) || !is_finite(triangle.b) || !is_finite(triangle.c)) return;
+        float distance = 0.0F;
+        if (!ray_intersects_triangle(point, direction, triangle, distance)) return;
+        const Vec3 hit = point + direction * distance;
+        const Vec3 closest = closest_point_on_triangle(hit, triangle);
+        if (length(hit - closest) <= 1.0e-5F) {
+            // Mark near-edge hits as ambiguous; a second ray direction would be
+            // a future robustness upgrade for pathological triangulations.
+            const Vec3 ab = triangle.b - triangle.a;
+            const Vec3 ac = triangle.c - triangle.a;
+            const Vec3 ap = hit - triangle.a;
+            const float d00 = dot(ab, ab), d01 = dot(ab, ac), d11 = dot(ac, ac);
+            const float d20 = dot(ap, ab), d21 = dot(ap, ac);
+            const float denom = d00 * d11 - d01 * d01;
+            if (std::abs(denom) > 1.0e-12F) {
+                const float v = (d11 * d20 - d01 * d21) / denom;
+                const float w = (d00 * d21 - d01 * d20) / denom;
+                if (v < 1.0e-5F || w < 1.0e-5F || v + w > 1.0F - 1.0e-5F) {
+                    ambiguous = true;
+                }
+            }
+            ++crossings;
+        }
+    };
+
+    if (mesh.bvh_nodes.empty() || mesh.bvh_triangle_indices.empty()) {
+        for (std::size_t i = 0; i < mesh.triangles.size(); ++i) consider_triangle(i);
+    } else {
+        const auto visit = [&](auto&& self, int node_index) -> void {
+            if (node_index < 0 || static_cast<std::size_t>(node_index) >= mesh.bvh_nodes.size()) return;
+            const TriangleBvhNode& node = mesh.bvh_nodes[static_cast<std::size_t>(node_index)];
+            if (!ray_intersects_aabb(point, direction, node.bounds)) return;
+            if (node.is_leaf()) {
+                for (std::size_t i = node.first; i < node.first + node.count; ++i) {
+                    consider_triangle(mesh.bvh_triangle_indices[i]);
+                }
+            } else {
+                self(self, node.left);
+                self(self, node.right);
+            }
+        };
+        visit(visit, 0);
+    }
+    if (ambiguous) return MeshContainment::boundary_or_unknown;
+    return (crossings % 2U) == 1U ? MeshContainment::inside : MeshContainment::outside;
+}
+
 // Surface contact only: watertight solid containment is a separate feature.
 inline Contact resolve_mesh_contact(Vec3& point, float particle_radius,
                                     const TriangleMeshCollider& mesh) noexcept {
