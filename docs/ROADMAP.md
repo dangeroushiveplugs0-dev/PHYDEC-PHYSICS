@@ -13,8 +13,8 @@
 - Android NDK integration spike after the desktop core is green.
 
 ## M2 — Collision foundation
-- Sphere, capsule and plane contacts first.
-- Mesh collision queries and proxy acceleration structures behind a common interface.
+- Initial analytic contact queries: sphere, capsule, and one-sided plane.
+- Next: connect contacts to the motion solver, then add mesh collision queries and proxy acceleration structures behind a common interface.
 - Explicit tolerances, broad-phase/narrow-phase tests, and performance benchmarks.
 
 ## M3 — Deformation and authoring
