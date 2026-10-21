@@ -250,6 +250,70 @@ inline ClosestTrianglePoint closest_point_on_mesh(const Vec3& point,
     return best;
 }
 
+// Continuous sphere-vs-mesh surface query. Conservative advancement follows the
+// segment from start to end and advances by the current separation divided by
+// travel distance, so it can detect crossing a thin triangle between frames.
+struct SweptMeshContact {
+    Vec3 position{}; // sphere center at time of impact, offset by radius
+    Vec3 normal{};
+    float time_of_impact{1.0F};
+    bool hit{false};
+};
+
+inline SweptMeshContact sweep_sphere_against_mesh(const Vec3& start, const Vec3& end,
+                                                  float radius,
+                                                  const TriangleMeshCollider& mesh,
+                                                  unsigned max_iterations = 32) noexcept {
+    SweptMeshContact result;
+    if (!is_finite(start) || !is_finite(end) || !std::isfinite(radius) || radius < 0.0F) {
+        return result;
+    }
+
+    const Vec3 travel = end - start;
+    const float travel_length = length(travel);
+    const ClosestTrianglePoint initial = closest_point_on_mesh(start, mesh);
+    if (!initial.valid) return result;
+
+    const float radius_squared = radius * radius;
+    if (initial.distance_squared <= radius_squared) {
+        const Vec3 offset = start - initial.position;
+        result.normal = length(offset) > 1.0e-7F ? normalized(offset) : initial.normal;
+        result.position = start + result.normal *
+            std::max(radius - std::sqrt(std::max(initial.distance_squared, 0.0F)), 0.0F);
+        result.time_of_impact = 0.0F;
+        result.hit = length(result.normal) > 1.0e-7F && is_finite(result.normal);
+        return result;
+    }
+    if (travel_length <= 1.0e-7F || max_iterations == 0) return result;
+
+    float t = 0.0F;
+    for (unsigned iteration = 0; iteration < max_iterations; ++iteration) {
+        const Vec3 center = start + travel * t;
+        const ClosestTrianglePoint closest = closest_point_on_mesh(center, mesh);
+        if (!closest.valid) return result;
+
+        const float distance = std::sqrt(std::max(closest.distance_squared, 0.0F));
+        if (distance <= radius + 1.0e-5F) {
+            const Vec3 offset = center - closest.position;
+            Vec3 normal = distance > 1.0e-7F ? normalized(offset) : closest.normal;
+            if (length(normal) <= 1.0e-7F || !is_finite(normal)) return result;
+            result.normal = normal;
+            result.position = closest.position + normal * radius;
+            result.time_of_impact = t;
+            result.hit = true;
+            return result;
+        }
+
+        // The distance to a fixed surface is 1-Lipschitz: this step cannot
+        // advance farther than the remaining gap along the swept segment.
+        const float step = (distance - radius) / travel_length;
+        if (!(step > 1.0e-7F) || !std::isfinite(step)) return result;
+        t += step;
+        if (t > 1.0F) return result;
+    }
+    return result;
+}
+
 // Surface contact only: watertight solid containment is a separate feature.
 inline Contact resolve_mesh_contact(Vec3& point, float particle_radius,
                                     const TriangleMeshCollider& mesh) noexcept {
