@@ -16,7 +16,7 @@
 
 ## M2 — Collision foundation
 - Implemented first narrow-phase set: sphere, capsule, one-sided plane, and triangle-mesh surface contacts.
-- Added optional median-split BVH acceleration with nearest-point AABB pruning; brute-force fallback remains available when no BVH is built. Rebuild the hierarchy after modifying triangle geometry.
+- Added optional median-split BVH acceleration with nearest-point AABB pruning. Added BVH refitting for vertex deformation when triangle count/order remain unchanged; rebuild when topology or triangle ordering changes. Brute-force fallback remains available when no valid BVH exists.
 - Added conservative-advancement swept-sphere collision against triangle surfaces in secondary motion; validate limits and performance with more cases. Add watertight closed-mesh containment and moving/deforming mesh CCD/update strategies.
 - Establish broad-phase/narrow-phase interfaces, explicit tolerances, and performance benchmarks.
 
@@ -41,4 +41,5 @@
 - [x] Add configurable friction and restitution to secondary-motion contact response.
 - [x] Add swept mesh collision query and fast-crossing regression tests.
 - [x] Add BVH acceleration for large triangle meshes.
+- [x] Add BVH refit support and regression tests for vertex-deformed meshes.
 - [ ] Add closed-mesh containment tests; triangle mesh collision currently resolves against the surface only.
