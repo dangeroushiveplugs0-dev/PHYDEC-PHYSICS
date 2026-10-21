@@ -101,6 +101,16 @@ void SecondaryMotionChain::step(const SecondaryMotionSettings& settings) {
             }
             for (const auto& collider : settings.mesh_colliders) {
                 preserve_velocity_contact([&]() {
+                    const SweptMeshContact swept = sweep_sphere_against_mesh(
+                        point.previous_position, point.position, point.collision_radius, collider);
+                    if (swept.hit) {
+                        point.position = swept.position;
+                        Contact contact;
+                        contact.position = swept.position - swept.normal * point.collision_radius;
+                        contact.normal = swept.normal;
+                        contact.touching = true;
+                        return contact;
+                    }
                     return resolve_mesh_contact(point.position, point.collision_radius, collider);
                 });
             }
