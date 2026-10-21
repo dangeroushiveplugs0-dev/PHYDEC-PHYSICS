@@ -27,3 +27,9 @@ jobs:
         run: cmake --build build/consumer --parallel 2
       - name: Run external consumer
         run: ctest --test-dir build/consumer --output-on-failure
+      - name: Configure benchmark build
+        run: cmake -S . -B build/bench -DCMAKE_BUILD_TYPE=Release -DPHYDEC_BUILD_TESTS=OFF -DPHYDEC_BUILD_BENCHMARKS=ON -DPHYDEC_INSTALL=OFF
+      - name: Build benchmark
+        run: cmake --build build/bench --target phydec_mesh_bvh_benchmark --parallel 2
+      - name: Run benchmark correctness guard
+        run: ./build/bench/benchmarks/phydec_mesh_bvh_benchmark
