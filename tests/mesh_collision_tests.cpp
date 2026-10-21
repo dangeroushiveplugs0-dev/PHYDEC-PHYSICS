@@ -112,5 +112,35 @@ int main() {
     assert(grid.bvh_triangle_indices.size() + 1 == grid.triangles.size());
     const auto after_rebuild = closest_point_on_mesh(Vec3{2.0F, 2.0F, 0.5F}, grid);
     assert(after_rebuild.valid);
+    // Deforming geometry can refit the existing hierarchy without rebuilding
+    // its split structure, and results must still match the brute-force reference.
+    TriangleMeshCollider moving_grid = grid;
+    moving_grid.triangles.pop_back(); // remove the deliberately invalid triangle
+    assert(build_triangle_mesh_bvh(moving_grid, 4));
+    const std::size_t original_node_count = moving_grid.bvh_nodes.size();
+    for (Triangle& triangle : moving_grid.triangles) {
+        triangle.a.z += 3.0F;
+        triangle.b.z += 3.0F;
+        triangle.c.z += 3.0F;
+    }
+    assert(refit_triangle_mesh_bvh(moving_grid));
+    assert(moving_grid.bvh_nodes.size() == original_node_count);
+
+    TriangleMeshCollider moving_reference = moving_grid;
+    moving_reference.bvh_nodes.clear();
+    moving_reference.bvh_triangle_indices.clear();
+    const Vec3 moved_query{2.25F, 3.25F, 3.5F};
+    const ClosestTrianglePoint moved_accelerated = closest_point_on_mesh(moved_query, moving_grid);
+    const ClosestTrianglePoint moved_reference_hit = closest_point_on_mesh(moved_query, moving_reference);
+    assert(moved_accelerated.valid && moved_reference_hit.valid);
+    assert(std::abs(moved_accelerated.distance_squared - moved_reference_hit.distance_squared) < 1.0e-4F);
+    assert(length(moved_accelerated.position - moved_reference_hit.position) < 1.0e-4F);
+
+    // A failed refit must discard stale bounds rather than silently querying them.
+    moving_grid.triangles.front().a.x = NAN;
+    assert(!refit_triangle_mesh_bvh(moving_grid));
+    assert(moving_grid.bvh_nodes.empty());
+    assert(moving_grid.bvh_triangle_indices.empty());
+
     return 0;
 }
