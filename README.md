@@ -32,6 +32,8 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
+See [the testing guide](docs/TESTING.md) for how to verify changes from GitHub Actions, including collision regressions and performance checks.
+
 ## Optional performance benchmark
 
 The deterministic nearest-point benchmark compares BVH queries with the brute-force reference and checks their result checksums. Timings are informational and must be compared on the same machine/build; CI does not enforce a machine-dependent speed threshold.
