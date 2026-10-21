@@ -64,5 +64,33 @@ int main() {
     assert(mesh_chain.valid());
     assert(mesh_chain.points()[1].position.z >=
            mesh_chain.points()[1].collision_radius - 1.0e-4F);
+
+    // Explicit closed-solid mode should eject a secondary-motion point that
+    // starts inside a closed collider. Ordinary triangle surfaces stay surface-only.
+    SecondaryMotionChain solid_chain({{0.0F, 0.0F, 0.0F}, {0.1F, 0.0F, 0.0F}});
+    SecondaryMotionSettings solid_settings;
+    solid_settings.gravity = {};
+    solid_settings.fixed_delta_seconds = 1.0F / 60.0F;
+    TriangleMeshCollider solid_cube;
+    const Vec3 v000{-1.0F, -1.0F, -1.0F}, v100{1.0F, -1.0F, -1.0F};
+    const Vec3 v010{-1.0F, 1.0F, -1.0F}, v110{1.0F, 1.0F, -1.0F};
+    const Vec3 v001{-1.0F, -1.0F, 1.0F}, v101{1.0F, -1.0F, 1.0F};
+    const Vec3 v011{-1.0F, 1.0F, 1.0F}, v111{1.0F, 1.0F, 1.0F};
+    const auto add_quad = [&solid_cube](const Vec3& a, const Vec3& b, const Vec3& c, const Vec3& d) {
+        solid_cube.triangles.push_back(Triangle{a, b, c});
+        solid_cube.triangles.push_back(Triangle{a, c, d});
+    };
+    add_quad(v000, v010, v110, v100);
+    add_quad(v001, v101, v111, v011);
+    add_quad(v000, v100, v101, v001);
+    add_quad(v010, v011, v111, v110);
+    add_quad(v000, v001, v011, v010);
+    add_quad(v100, v110, v111, v101);
+    solid_cube.closed_mesh_solid = true;
+    assert(phydec::build_triangle_mesh_bvh(solid_cube));
+    solid_settings.mesh_colliders.push_back(solid_cube);
+    solid_chain.step(solid_settings);
+    assert(solid_chain.valid());
+    assert(!phydec::point_inside_closed_mesh(solid_chain.points()[1].position, solid_cube));
     return 0;
 }
