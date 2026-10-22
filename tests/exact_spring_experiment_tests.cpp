@@ -47,8 +47,6 @@ float state_error(const ExactSpringState& a, const ExactSpringState& b) {
 }
 
 int main() {
-    // Exact constant-coefficient integration should be effectively independent
-    // of how a fixed total interval is partitioned into steps.
     for (const float damping : {0.0F, 0.14F, 1.0F, 1.7F, 8.0F}) {
         ExactSpringSettings settings;
         settings.frequency_hz = 2.2F;
@@ -70,8 +68,37 @@ int main() {
                 "damping regimes must remain finite");
     }
 
-    // Matched equation comparison: semi-implicit Euler should converge toward
-    // the exact solution as dt shrinks for this stable test configuration.
+    // Variable frame deltas with a piecewise-constant parent acceleration.
+    // Compare two partitions that share the same acceleration-change boundaries.
+    ExactSpringSettings piecewise;
+    piecewise.frequency_hz = 2.0F;
+    piecewise.damping_ratio = 0.35F;
+    piecewise.gravity = {0.0F, -9.81F, 0.0F};
+    ExactSpringState variable{{0.2F, 0.3F, -0.1F}, {0.8F, -0.4F, 0.2F}};
+    ExactSpringState variable_subdivided = variable;
+    const Vec3 acceleration_a{0.0F, 0.0F, 0.0F};
+    const Vec3 acceleration_b{3.0F, -1.5F, 0.75F};
+    step_exact_spring(variable, 0.12F, piecewise, acceleration_a);
+    step_exact_spring(variable, 0.08F, piecewise, acceleration_b);
+    for (const float dt : {0.03F, 0.04F, 0.05F}) {
+        step_exact_spring(variable_subdivided, dt, piecewise, acceleration_a);
+    }
+    for (const float dt : {0.01F, 0.02F, 0.05F}) {
+        step_exact_spring(variable_subdivided, dt, piecewise, acceleration_b);
+    }
+    require(near_vec(variable.offset, variable_subdivided.offset, 2.0e-4F),
+            "variable frame partitions should agree when forcing-change boundaries match");
+    require(near_vec(variable.velocity, variable_subdivided.velocity, 2.0e-4F),
+            "variable frame partitions should preserve velocity across forcing changes");
+
+    // A sudden acceleration change must alter velocity/offset response, not be ignored.
+    ExactSpringState no_parent = variable;
+    ExactSpringState with_parent = variable;
+    step_exact_spring(no_parent, 1.0F / 60.0F, piecewise, {});
+    step_exact_spring(with_parent, 1.0F / 60.0F, piecewise, {20.0F, 0.0F, 0.0F});
+    require(std::abs(with_parent.velocity.x - no_parent.velocity.x) > 1.0e-4F,
+            "parent acceleration change should affect spring response");
+
     ExactSpringSettings matched;
     matched.frequency_hz = 1.7F;
     matched.damping_ratio = 0.45F;
@@ -92,7 +119,6 @@ int main() {
     require(errors[1] < errors[0] && errors[2] < errors[1],
             "matched approximate integration error should shrink as dt decreases");
 
-    // Repeated updates over varied frame sizes and damping regimes must remain finite.
     for (const float damping : {0.0F, 0.14F, 0.7F, 1.0F, 1.7F, 8.0F}) {
         for (const float dt : {1.0F / 30.0F, 1.0F / 60.0F, 1.0F / 120.0F}) {
             ExactSpringSettings stress;
@@ -109,7 +135,6 @@ int main() {
         }
     }
 
-    // Invalid numeric settings are rejected without partially mutating state.
     ExactSpringState guarded{{1.0F, 2.0F, 3.0F}, {4.0F, 5.0F, 6.0F}};
     const ExactSpringState guarded_original = guarded;
     ExactSpringSettings invalid;
@@ -119,7 +144,6 @@ int main() {
             near_vec(guarded.velocity, guarded_original.velocity, 0.0F),
             "non-finite settings must leave the state unchanged");
 
-    // Under constant gravity, the equilibrium is gravity / omega^2.
     ExactSpringSettings gravity;
     gravity.frequency_hz = 1.5F;
     gravity.damping_ratio = 0.8F;
