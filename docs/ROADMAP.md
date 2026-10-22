@@ -11,7 +11,7 @@
 - Per-point mass, damping, stiffness, gravity and external forces.
 - Sphere, capsule, and one-sided plane contacts applied during constraint iterations.
 - Triangle-mesh surface contacts integrated into the same solver.
-- Next: improve contact stability, add collision-response tuning, and validate with automated builds.
+- Next: compare the current Verlet-style point-chain solver against a C++ implementation of the exact damped-spring method used by xloveee/jiggle-physics.
 - Android NDK integration spike after the desktop core is green.
 
 ## M2 — Collision foundation
@@ -31,10 +31,14 @@
 
 ## Engineering rules
 - Renderer-independent core; platform and rendering adapters stay separate.
+- C++20 is the locked implementation language for the physics engine. Do not add a second runtime language just because a useful reference implementation uses it. Python may be considered later for non-runtime tooling only if a concrete need justifies it.
+- External implementations are algorithmic references and comparison candidates, not automatic dependencies or instructions to copy code.
+- Before implementing a substantial subsystem, search for mature open-source alternatives and compare scope, license, algorithm, complexity, testability, and target-platform suitability.
+- Prefer the simplest implementation that meets the measured correctness, stability, feature, and performance requirements. Complexity must earn its place through evidence.
+- Port useful algorithms into C++ and preserve required attribution/license notices. Do not introduce JavaScript into the engine runtime.
 - Every feature lands with tests and documented limitations.
 - Do not claim Android performance until measured on-device.
-- KawaiiPhysics is a feature/architecture reference, not code to copy blindly; preserve attribution and license obligations if code is reused.
-
+- KawaiiPhysics and xloveee/jiggle-physics are references for feature expectations and algorithms, not proof that one implementation is universally superior.
 
 ## Collision response follow-up
 
@@ -47,7 +51,7 @@
 - [x] Add deforming-mesh swept-sphere query and integrate it into secondary motion for stable topology/linear vertex motion.
 - [x] Add deforming-CCD candidate counters, brute-force equivalence tests, and a candidate-reduction benchmark.
 - [ ] Add rotation-aware CCD, mesh topology validation, and broader refit/swept-collision profiling.
-
+- [ ] Benchmark the current secondary-motion solver against an exact damped-spring C++ prototype before choosing whether to replace or retain it.
 
 ## Release readiness
 
