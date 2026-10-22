@@ -7,17 +7,16 @@
 
 namespace phydec::experimental {
 
-// Isolated reference prototype based on the damped-oscillator equation documented
-// by xlovecam's jiggle-physics project (BSD-3-Clause):
+// Isolated prototype based on the damped-oscillator equation documented by
+// xlovecam's jiggle-physics project (BSD-3-Clause):
 //   x'' = -w^2 * x - 2*zeta*w*x' + gravity - parent_acceleration
-// This is an experiment, not the production solver API. No reference source code
-// is copied here; the implementation expresses the documented mathematical model.
+// This is experimental, not the production solver API. No reference source code
+// is copied; this expresses the documented mathematical model in C++20.
 struct ExactSpringSettings {
     float frequency_hz{1.9F};
     float damping_ratio{0.14F};
     float relative_size{1.0F};
     Vec3 gravity{0.0F, -2.7F, 0.0F};
-    Vec3 parent_acceleration{};
 };
 
 struct ExactSpringState {
@@ -41,8 +40,7 @@ inline void step_exact_spring(ExactSpringState& state, float dt,
     const float zeta = std::max(settings.damping_ratio / std::sqrt(size), 0.0F);
     const float omega_squared = omega * omega;
     const float zeta_omega = zeta * omega;
-    const Vec3 forcing = settings.gravity + settings.parent_acceleration * -1.0F +
-                         parent_acceleration * -1.0F;
+    const Vec3 forcing = settings.gravity + parent_acceleration * -1.0F;
     const Vec3 equilibrium = forcing / omega_squared;
     const Vec3 x = state.offset - equilibrium;
     const Vec3 v = state.velocity;
