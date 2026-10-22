@@ -23,6 +23,25 @@ void require(bool condition, const char* message) {
         std::exit(1);
     }
 }
+void step_semi_implicit_euler(ExactSpringState& state, float dt,
+                              const ExactSpringSettings& settings) {
+    constexpr float tau = 6.2831853071795864769F;
+    const float omega = tau * settings.frequency_hz /
+                        std::sqrt(std::max(settings.relative_size, 1.0e-4F));
+    const float zeta = settings.damping_ratio /
+                       std::sqrt(std::max(settings.relative_size, 1.0e-4F));
+    const Vec3 acceleration = settings.gravity -
+        state.offset * (omega * omega) -
+        state.velocity * (2.0F * zeta * omega);
+    state.velocity += acceleration * dt;
+    state.offset += state.velocity * dt;
+}
+float state_error(const ExactSpringState& a, const ExactSpringState& b) {
+    const Vec3 dx = a.offset - b.offset;
+    const Vec3 dv = a.velocity - b.velocity;
+    return std::abs(dx.x) + std::abs(dx.y) + std::abs(dx.z) +
+           std::abs(dv.x) + std::abs(dv.y) + std::abs(dv.z);
+}
 }
 
 int main() {
@@ -48,6 +67,28 @@ int main() {
                 "damping regimes must remain finite");
     }
 
+    // Matched equation comparison: explicit semi-implicit Euler should converge
+    // toward the exact solution as dt shrinks for this stable test configuration.
+    ExactSpringSettings matched;
+    matched.frequency_hz = 1.7F;
+    matched.damping_ratio = 0.45F;
+    matched.gravity = {0.0F, -3.0F, 0.5F};
+    const ExactSpringState initial{{0.35F, -0.4F, 0.2F}, {0.7F, 0.1F, -0.25F}};
+    ExactSpringState exact = initial;
+    step_exact_spring(exact, 1.0F, matched);
+    float errors[3]{};
+    const float steps[3]{1.0F / 30.0F, 1.0F / 60.0F, 1.0F / 120.0F};
+    for (int rate = 0; rate < 3; ++rate) {
+        ExactSpringState approximate = initial;
+        const int count = static_cast<int>(std::lround(1.0F / steps[rate]));
+        for (int i = 0; i < count; ++i) {
+            step_semi_implicit_euler(approximate, steps[rate], matched);
+        }
+        errors[rate] = state_error(approximate, exact);
+    }
+    require(errors[1] < errors[0] && errors[2] < errors[1],
+            "matched approximate integration error should shrink as dt decreases");
+
     // Under constant gravity, the equilibrium is gravity / omega^2.
     ExactSpringSettings gravity;
     gravity.frequency_hz = 1.5F;
@@ -62,7 +103,6 @@ int main() {
     require(std::abs(sag.velocity.y) < 2.0e-4F,
             "gravity sag should settle to near-zero velocity");
 
-    // Invalid time and non-finite input are no-ops rather than poisoning state.
     ExactSpringState unchanged{{1.0F, 2.0F, 3.0F}, {4.0F, 5.0F, 6.0F}};
     const ExactSpringState original = unchanged;
     step_exact_spring(unchanged, 0.0F, gravity);
@@ -70,6 +110,7 @@ int main() {
             near_vec(unchanged.velocity, original.velocity, 0.0F),
             "zero dt should leave state unchanged");
 
-    std::cout << "Exact spring prototype tests passed.\n";
+    std::cout << "Exact spring prototype tests passed. Matched Euler errors (dt 1/30, 1/60, 1/120): "
+              << errors[0] << ", " << errors[1] << ", " << errors[2] << '\n';
     return 0;
 }

@@ -9,32 +9,61 @@
 
 using Clock = std::chrono::steady_clock;
 
+namespace {
+void step_semi_implicit_euler(phydec::experimental::ExactSpringState& state, float dt,
+                              const phydec::experimental::ExactSpringSettings& settings) {
+    constexpr float tau = 6.2831853071795864769F;
+    const float omega = tau * settings.frequency_hz /
+                        std::sqrt(std::max(settings.relative_size, 1.0e-4F));
+    const float zeta = settings.damping_ratio /
+                       std::sqrt(std::max(settings.relative_size, 1.0e-4F));
+    const phydec::Vec3 acceleration = settings.gravity -
+        state.offset * (omega * omega) -
+        state.velocity * (2.0F * zeta * omega);
+    state.velocity += acceleration * dt;
+    state.offset += state.velocity * dt;
+}
+}
+
 int main() {
-    // This is a throughput microbenchmark, not a quality verdict: the models
-    // differ (exact independent oscillators vs constrained two-point Verlet chains).
-    // The two runs use equal counts and fixed work, and report timings only.
     constexpr std::size_t count = 20000;
     constexpr int frames = 600;
     constexpr float dt = 1.0F / 60.0F;
+    phydec::experimental::ExactSpringSettings settings;
+    settings.frequency_hz = 1.9F;
+    settings.damping_ratio = 0.14F;
 
-    phydec::experimental::ExactSpringSettings exact_settings;
-    exact_settings.frequency_hz = 1.9F;
-    exact_settings.damping_ratio = 0.14F;
     std::vector<phydec::experimental::ExactSpringState> exact(count);
+    std::vector<phydec::experimental::ExactSpringState> approximate(count);
     for (std::size_t i = 0; i < count; ++i) {
-        exact[i].offset = {static_cast<float>(i % 13) * 0.01F, 0.2F, 0.0F};
-        exact[i].velocity = {0.1F, -0.05F, 0.0F};
+        const phydec::Vec3 offset{static_cast<float>(i % 13) * 0.01F, 0.2F, 0.0F};
+        const phydec::Vec3 velocity{0.1F, -0.05F, 0.0F};
+        exact[i] = {offset, velocity};
+        approximate[i] = {offset, velocity};
     }
+
     volatile float exact_sink = 0.0F;
     const auto exact_start = Clock::now();
     for (int frame = 0; frame < frames; ++frame) {
         for (auto& state : exact) {
-            phydec::experimental::step_exact_spring(state, dt, exact_settings);
+            phydec::experimental::step_exact_spring(state, dt, settings);
             exact_sink = exact_sink + state.offset.y;
         }
     }
     const auto exact_end = Clock::now();
 
+    volatile float approximate_sink = 0.0F;
+    const auto approximate_start = Clock::now();
+    for (int frame = 0; frame < frames; ++frame) {
+        for (auto& state : approximate) {
+            step_semi_implicit_euler(state, dt, settings);
+            approximate_sink = approximate_sink + state.offset.y;
+        }
+    }
+    const auto approximate_end = Clock::now();
+
+    // Context-only workload: the current PHYDEC two-point chain also performs
+    // distance-constraint work, so it is not the matched-equation comparison.
     phydec::SecondaryMotionSettings verlet_settings;
     verlet_settings.fixed_delta_seconds = dt;
     verlet_settings.constraint_iterations = 1;
@@ -44,27 +73,32 @@ int main() {
         chains.emplace_back(std::vector<phydec::Vec3>{{0.0F, 0.0F, 0.0F},
             {static_cast<float>(i % 13) * 0.01F, 0.2F, 0.0F}});
     }
-    volatile float verlet_sink = 0.0F;
-    const auto verlet_start = Clock::now();
+    volatile float chain_sink = 0.0F;
+    const auto chain_start = Clock::now();
     for (int frame = 0; frame < frames; ++frame) {
         for (auto& chain : chains) {
             chain.step(verlet_settings);
-            verlet_sink = verlet_sink + chain.points().back().position.y;
+            chain_sink = chain_sink + chain.points().back().position.y;
         }
     }
-    const auto verlet_end = Clock::now();
+    const auto chain_end = Clock::now();
 
-    const auto exact_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        exact_end - exact_start).count();
-    const auto verlet_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        verlet_end - verlet_start).count();
+    const auto elapsed_ns = [](auto start, auto end) {
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    };
     const double updates = static_cast<double>(count) * frames;
-    std::cout << "Experimental spring integration microbenchmark (Release recommended)\n"
+    const double exact_ns = static_cast<double>(elapsed_ns(exact_start, exact_end)) / updates;
+    const double approximate_ns = static_cast<double>(elapsed_ns(approximate_start, approximate_end)) / updates;
+    const double chain_ns = static_cast<double>(elapsed_ns(chain_start, chain_end)) / updates;
+    std::cout << "Solver comparison microbenchmark (Release recommended)\n"
               << "states=" << count << " frames=" << frames << " dt=" << dt << '\n'
-              << "exact oscillator ns/update=" << static_cast<double>(exact_ns) / updates << '\n'
-              << "PHYDEC two-point chain ns/update=" << static_cast<double>(verlet_ns) / updates << '\n'
-              << "timing is informational; models do different work and are not quality-equivalent\n"
-              << "sinks=" << exact_sink << ',' << verlet_sink << '\n';
-    if (!std::isfinite(exact_sink) || !std::isfinite(verlet_sink)) return 1;
+              << "MATCHED EQUATION: exact oscillator ns/update=" << exact_ns << '\n'
+              << "MATCHED EQUATION: semi-implicit Euler ns/update=" << approximate_ns << '\n'
+              << "CONTEXT ONLY: PHYDEC two-point constrained chain ns/update=" << chain_ns << '\n'
+              << "Matched equation integrates the same spring ODE; chain context does different work. "
+                 "Timing is informational, not a CI threshold.\n"
+              << "sinks=" << exact_sink << ',' << approximate_sink << ',' << chain_sink << '\n';
+    if (!std::isfinite(exact_sink) || !std::isfinite(approximate_sink) ||
+        !std::isfinite(chain_sink)) return 1;
     return 0;
 }
