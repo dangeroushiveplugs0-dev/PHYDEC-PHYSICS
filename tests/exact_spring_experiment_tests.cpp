@@ -1,8 +1,10 @@
 #include "phydec/experimental/exact_spring.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 using phydec::Vec3;
 using phydec::experimental::ExactSpringSettings;
@@ -55,9 +57,10 @@ int main() {
         settings.relative_size = 0.8F;
         ExactSpringState single{{0.4F, -0.2F, 0.7F}, {1.1F, 0.3F, -0.6F}};
         ExactSpringState subdivided = single;
-        step_exact_spring(single, 1.0F, settings, {0.25F, -0.5F, 0.75F});
+        const Vec3 parent_acceleration{0.25F, -0.5F, 0.75F};
+        step_exact_spring(single, 1.0F, settings, parent_acceleration);
         for (int i = 0; i < 100; ++i) {
-            step_exact_spring(subdivided, 0.01F, settings, {0.25F, -0.5F, 0.75F});
+            step_exact_spring(subdivided, 0.01F, settings, parent_acceleration);
         }
         require(near_vec(single.offset, subdivided.offset, 2.0e-4F),
                 "constant-forcing offset should be frame-partition invariant");
@@ -67,8 +70,8 @@ int main() {
                 "damping regimes must remain finite");
     }
 
-    // Matched equation comparison: explicit semi-implicit Euler should converge
-    // toward the exact solution as dt shrinks for this stable test configuration.
+    // Matched equation comparison: semi-implicit Euler should converge toward
+    // the exact solution as dt shrinks for this stable test configuration.
     ExactSpringSettings matched;
     matched.frequency_hz = 1.7F;
     matched.damping_ratio = 0.45F;
@@ -88,6 +91,33 @@ int main() {
     }
     require(errors[1] < errors[0] && errors[2] < errors[1],
             "matched approximate integration error should shrink as dt decreases");
+
+    // Repeated updates over varied frame sizes and damping regimes must remain finite.
+    for (const float damping : {0.0F, 0.14F, 0.7F, 1.0F, 1.7F, 8.0F}) {
+        for (const float dt : {1.0F / 30.0F, 1.0F / 60.0F, 1.0F / 120.0F}) {
+            ExactSpringSettings stress;
+            stress.frequency_hz = 3.5F;
+            stress.damping_ratio = damping;
+            stress.relative_size = 0.35F;
+            stress.gravity = {2.0F, -9.81F, 0.75F};
+            ExactSpringState state{{0.5F, -0.25F, 0.9F}, {1.4F, -0.8F, 0.2F}};
+            for (int frame = 0; frame < 12000; ++frame) {
+                step_exact_spring(state, dt, stress);
+                require(is_finite(state.offset) && is_finite(state.velocity),
+                        "long-run timestep/damping sweep must remain finite");
+            }
+        }
+    }
+
+    // Invalid numeric settings are rejected without partially mutating state.
+    ExactSpringState guarded{{1.0F, 2.0F, 3.0F}, {4.0F, 5.0F, 6.0F}};
+    const ExactSpringState guarded_original = guarded;
+    ExactSpringSettings invalid;
+    invalid.frequency_hz = std::numeric_limits<float>::quiet_NaN();
+    step_exact_spring(guarded, 1.0F / 60.0F, invalid);
+    require(near_vec(guarded.offset, guarded_original.offset, 0.0F) &&
+            near_vec(guarded.velocity, guarded_original.velocity, 0.0F),
+            "non-finite settings must leave the state unchanged");
 
     // Under constant gravity, the equilibrium is gravity / omega^2.
     ExactSpringSettings gravity;
