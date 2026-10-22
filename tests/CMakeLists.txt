@@ -18,3 +18,10 @@ add_executable(phydec_mesh_collision_tests
 target_link_libraries(phydec_mesh_collision_tests PRIVATE PHYDEC::Core)
 target_compile_features(phydec_mesh_collision_tests PRIVATE cxx_std_20)
 add_test(NAME phydec_mesh_collision_tests COMMAND phydec_mesh_collision_tests)
+
+add_executable(phydec_exact_spring_experiment_tests
+  exact_spring_experiment_tests.cpp
+)
+target_link_libraries(phydec_exact_spring_experiment_tests PRIVATE PHYDEC::Core)
+target_compile_features(phydec_exact_spring_experiment_tests PRIVATE cxx_std_20)
+add_test(NAME phydec_exact_spring_experiment_tests COMMAND phydec_exact_spring_experiment_tests)

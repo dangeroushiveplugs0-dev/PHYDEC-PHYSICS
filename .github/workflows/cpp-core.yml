@@ -30,8 +30,10 @@ jobs:
       - name: Configure benchmark build
         run: cmake -S . -B build/bench -DCMAKE_BUILD_TYPE=Release -DPHYDEC_BUILD_TESTS=OFF -DPHYDEC_BUILD_BENCHMARKS=ON -DPHYDEC_INSTALL=OFF
       - name: Build benchmarks
-        run: cmake --build build/bench --target phydec_mesh_bvh_benchmark phydec_deforming_ccd_benchmark --parallel 2
+        run: cmake --build build/bench --target phydec_mesh_bvh_benchmark phydec_deforming_ccd_benchmark phydec_solver_comparison_benchmark --parallel 2
       - name: Run mesh BVH benchmark correctness guard
         run: ./build/bench/benchmarks/phydec_mesh_bvh_benchmark
       - name: Run deforming CCD benchmark correctness and candidate guard
         run: ./build/bench/benchmarks/phydec_deforming_ccd_benchmark
+      - name: Run solver comparison benchmark smoke test
+        run: ./build/bench/benchmarks/phydec_solver_comparison_benchmark
