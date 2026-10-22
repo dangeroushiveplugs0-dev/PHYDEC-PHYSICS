@@ -8,7 +8,7 @@
 namespace phydec::experimental {
 
 // Isolated prototype based on the damped-oscillator equation documented by
-// xlovecam's jiggle-physics project (BSD-3-Clause):
+// xloveee/jiggle-physics (BSD-3-Clause):
 //   x'' = -w^2 * x - 2*zeta*w*x' + gravity - parent_acceleration
 // This is experimental, not the production solver API. No reference source code
 // is copied; this expresses the documented mathematical model in C++20.
@@ -29,6 +29,9 @@ inline void step_exact_spring(ExactSpringState& state, float dt,
                               const Vec3& parent_acceleration = {}) noexcept {
     if (!(dt > 0.0F) || !std::isfinite(dt) ||
         !is_finite(state.offset) || !is_finite(state.velocity) ||
+        !std::isfinite(settings.frequency_hz) ||
+        !std::isfinite(settings.damping_ratio) ||
+        !std::isfinite(settings.relative_size) ||
         !is_finite(settings.gravity) || !is_finite(parent_acceleration)) {
         return;
     }
