@@ -77,4 +77,48 @@ inline void step_exact_spring(ExactSpringState& state, float dt,
     }
 }
 
+/**
+ * Experimental anchor-driven bone offset wrapper.
+ *
+ * Feed the animated anchor position once per simulation update. The class
+ * estimates anchor acceleration from successive samples and returns the anchor
+ * plus a damped spring offset. This is independent-bone motion: it does not
+ * enforce lengths between bones and does not apply collision response.
+ */
+class ExactSpringBone {
+public:
+    void reset(const Vec3& anchor = {}) noexcept {
+        state_ = {};
+        previous_anchor_ = anchor;
+        previous_anchor_velocity_ = {};
+        initialized_ = is_finite(anchor);
+    }
+
+    [[nodiscard]] Vec3 update(const Vec3& animated_anchor, float dt,
+                              const ExactSpringSettings& settings) noexcept {
+        if (!is_finite(animated_anchor) || !(dt > 0.0F) || !std::isfinite(dt)) {
+            return initialized_ ? previous_anchor_ + state_.offset : animated_anchor;
+        }
+        if (!initialized_) {
+            reset(animated_anchor);
+            return animated_anchor;
+        }
+
+        const Vec3 anchor_velocity = (animated_anchor - previous_anchor_) / dt;
+        const Vec3 anchor_acceleration = (anchor_velocity - previous_anchor_velocity_) / dt;
+        step_exact_spring(state_, dt, settings, anchor_acceleration);
+        previous_anchor_ = animated_anchor;
+        previous_anchor_velocity_ = anchor_velocity;
+        return animated_anchor + state_.offset;
+    }
+
+    [[nodiscard]] const ExactSpringState& state() const noexcept { return state_; }
+
+private:
+    ExactSpringState state_{};
+    Vec3 previous_anchor_{};
+    Vec3 previous_anchor_velocity_{};
+    bool initialized_{false};
+};
+
 } // namespace phydec::experimental

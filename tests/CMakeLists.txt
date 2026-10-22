@@ -32,3 +32,10 @@ add_executable(phydec_linked_chain_comparison_tests
 target_link_libraries(phydec_linked_chain_comparison_tests PRIVATE PHYDEC::Core)
 target_compile_features(phydec_linked_chain_comparison_tests PRIVATE cxx_std_20)
 add_test(NAME phydec_linked_chain_comparison_tests COMMAND phydec_linked_chain_comparison_tests)
+
+add_executable(phydec_exact_spring_bone_tests
+  exact_spring_bone_tests.cpp
+)
+target_link_libraries(phydec_exact_spring_bone_tests PRIVATE PHYDEC::Core)
+target_compile_features(phydec_exact_spring_bone_tests PRIVATE cxx_std_20)
+add_test(NAME phydec_exact_spring_bone_tests COMMAND phydec_exact_spring_bone_tests)

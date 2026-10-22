@@ -4,15 +4,14 @@ Reference: https://github.com/xloveee/jiggle-physics (BSD-3-Clause).
 
 ## Status
 
-**Experiment ongoing; no production solver decision has been made.** The C++20 prototype in
+**Experimental optional bone-offset wrapper added; the existing chain solver remains unchanged.** The wrapper is not the default solver and is not yet collision-aware or length-constrained. The C++20 prototype in
 `engine/include/phydec/experimental/exact_spring.hpp` expresses the reference's documented
 closed-form damped oscillator mathematically. It does not copy the JavaScript source. The
 reference project is credited here; if source code is copied in a future change, preserve its
 BSD-3-Clause notice and required disclaimers.
 
 CI run [#108](https://github.com/dangeroushiveplugs0-dev/PHYDEC-PHYSICS/actions/runs/39838201618)
-passed after adding non-finite-settings guards and expanded stress tests. The next test update
-adds piecewise parent acceleration and variable frame deltas; its CI result is pending.
+passed after adding non-finite-settings guards and expanded stress tests. The variable-delta, parent-acceleration, and linked-chain fixture CI runs have passed. An isolated wrapper test now checks animated-anchor response, finite output, invalid-input handling, and reset behavior.
 
 ## Category scorecard
 
