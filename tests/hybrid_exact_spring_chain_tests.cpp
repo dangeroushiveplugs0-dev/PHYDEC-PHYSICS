@@ -37,7 +37,7 @@ int main() {
     SecondaryMotionChain production(rest);
     SecondaryMotionSettings production_settings;
     production_settings.fixed_delta_seconds = dt;
-    production_settings.gravity = settings.gravity;
+    production_settings.gravity = {0.0F, 0.0F, -1.5F};
     production_settings.constraint_iterations = 10;
     ExactSpringSettings settings;
     settings.frequency_hz = 2.1F;
