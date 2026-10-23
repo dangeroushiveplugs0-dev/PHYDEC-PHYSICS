@@ -4,14 +4,14 @@ Reference: https://github.com/xloveee/jiggle-physics (BSD-3-Clause).
 
 ## Status
 
-**Experimental optional bone-offset wrapper added; the existing chain solver remains unchanged.** The wrapper is not the default solver and is not yet collision-aware or length-constrained. The C++20 prototype in
+**Experimental exact-spring bone wrapper and isolated hybrid chain prototype added; the existing production chain solver remains unchanged.** The independent wrapper is not collision-aware or length-constrained. The hybrid prototype adds positional segment-length projection, but is still experimental and does not yet handle collision, rotation-aware local frames, or per-bone settings. The C++20 prototype in
 `engine/include/phydec/experimental/exact_spring.hpp` expresses the reference's documented
 closed-form damped oscillator mathematically. It does not copy the JavaScript source. The
 reference project is credited here; if source code is copied in a future change, preserve its
 BSD-3-Clause notice and required disclaimers.
 
 CI run [#108](https://github.com/dangeroushiveplugs0-dev/PHYDEC-PHYSICS/actions/runs/39838201618)
-passed after adding non-finite-settings guards and expanded stress tests. The variable-delta, parent-acceleration, and linked-chain fixture CI runs have passed. An isolated wrapper test now checks animated-anchor response, finite output, invalid-input handling, and reset behavior.
+passed after adding non-finite-settings guards and expanded stress tests. The variable-delta, parent-acceleration, and linked-chain fixture CI runs have passed. Isolated tests cover the bone wrapper and a new hybrid chain fixture that runs 1,200 animated frames, checks finite output, pinned root, segment-length error, measurable secondary motion, invalid-input handling, and reset behavior. CI has not yet verified the hybrid branch.
 
 ## Category scorecard
 
@@ -72,8 +72,8 @@ not CI thresholds.
 ## Next comparison passes
 
 1. Compare linked-chain behavior under parent translation/rotation and realistic animation acceleration, including upstream-to-downstream response.
-2. Decide whether exact independent oscillators are useful as a separate bone-offset mode, while retaining distance constraints for chains that need fixed segment lengths.
-3. Test collision approaches separately, including fast motion and actual triangle meshes. Do not use simple point colliders as a substitute for PHYDEC's detailed-mesh collision requirement.
+2. Prototype a hybrid exact-spring chain that feeds spring offsets through distance constraints. The new isolated header is `engine/include/phydec/experimental/hybrid_exact_spring_chain.hpp`; it is not part of the default solver API. Compare segment-length error and motion response before deciding whether any behavior belongs in production.
+3. Add collision integration to the hybrid prototype only after its constraint behavior passes CI and comparison tests. Then test collision approaches separately, including fast motion and actual triangle meshes. Do not use simple point colliders as a substitute for PHYDEC's detailed-mesh collision requirement.
 4. Evaluate weight-painted deformation as a feature-coverage category when the core deformation API is in scope.
 5. After solver comparison, start the explicitly planar 2D math/secondary-motion prototype and compare it against a constrained 3D reference.
 6. Decide category by category. Adopt only the parts that win on correctness/stability and justify integration cost. Do not add duplicate production solvers unless distinct semantics are useful.
