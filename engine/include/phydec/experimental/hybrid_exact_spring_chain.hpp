@@ -31,6 +31,7 @@ public:
         output_positions_ = anchors;
         springs_.assign(anchors.size(), ExactSpringState{});
         previous_anchor_velocities_.assign(anchors.size(), Vec3{});
+        rebuild_rest_lengths();
         initialized_ = !anchors.empty() && anchors_are_finite(anchors);
         if (!initialized_) {
             previous_anchors_.clear();
