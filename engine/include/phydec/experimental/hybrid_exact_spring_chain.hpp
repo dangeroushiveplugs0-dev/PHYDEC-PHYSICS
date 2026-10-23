@@ -70,6 +70,7 @@ public:
         auto next_springs = springs_;
         std::vector<Vec3> anchor_velocities(count);
         anchor_velocities[0] = (animated_anchors[0] - previous_anchors_[0]) / dt;
+        if (!is_finite(anchor_velocities[0])) return false;
         std::vector<Vec3> candidate(count);
         candidate[0] = animated_anchors[0];
 
@@ -77,6 +78,10 @@ public:
             anchor_velocities[i] = (animated_anchors[i] - previous_anchors_[i]) / dt;
             const Vec3 parent_velocity = (animated_anchors[i - 1] - previous_anchors_[i - 1]) / dt;
             const Vec3 parent_acceleration = (parent_velocity - previous_anchor_velocities_[i - 1]) / dt;
+            if (!is_finite(anchor_velocities[i]) || !is_finite(parent_velocity) ||
+                !is_finite(parent_acceleration)) {
+                return false;
+            }
             step_exact_spring(next_springs[i], dt, spring_settings, parent_acceleration);
             candidate[i] = animated_anchors[i] + next_springs[i].offset;
         }
