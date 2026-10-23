@@ -16,11 +16,15 @@ namespace phydec::experimental {
 class HybridExactSpringChain {
 public:
     explicit HybridExactSpringChain(std::vector<Vec3> initial_anchors = {})
-        : previous_anchors_(initial_anchors), output_positions_(initial_anchors),
-          springs_(initial_anchors.size()),\n          previous_anchor_velocities_(initial_anchors.size()) {\n        rebuild_rest_lengths();
+        : previous_anchors_(initial_anchors),
+          previous_anchor_velocities_(initial_anchors.size()),
+          output_positions_(initial_anchors), springs_(initial_anchors.size()) {
         initialized_ = !initial_anchors.empty() && anchors_are_finite(initial_anchors);
-        if (!initialized_) {
+        if (initialized_) {
+            rebuild_rest_lengths();
+        } else {
             previous_anchors_.clear();
+            previous_anchor_velocities_.clear();
             output_positions_.clear();
             springs_.clear();
         }
