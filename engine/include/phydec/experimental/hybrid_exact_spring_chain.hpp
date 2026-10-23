@@ -42,6 +42,7 @@ public:
             output_positions_.clear();
             springs_.clear();
             previous_anchor_velocities_.clear();
+            rest_lengths_.clear();
         }
     }
 
@@ -124,10 +125,20 @@ private:
         return true;
     }
 
+    void rebuild_rest_lengths() {
+        rest_lengths_.clear();
+        if (previous_anchors_.size() < 2) return;
+        rest_lengths_.reserve(previous_anchors_.size() - 1);
+        for (std::size_t i = 1; i < previous_anchors_.size(); ++i) {
+            rest_lengths_.push_back(length(previous_anchors_[i] - previous_anchors_[i - 1]));
+        }
+    }
+
     std::vector<Vec3> previous_anchors_{};
     std::vector<Vec3> previous_anchor_velocities_{};
     std::vector<Vec3> output_positions_{};
     std::vector<ExactSpringState> springs_{};
+    std::vector<float> rest_lengths_{};
     bool initialized_{false};
 };
 
