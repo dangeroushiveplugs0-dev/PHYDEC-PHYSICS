@@ -91,16 +91,21 @@ public:
         state_ = {};
         previous_anchor_ = anchor;
         previous_anchor_velocity_ = {};
-        initialized_ = is_finite(anchor);
+        // The next valid update establishes a fresh baseline and returns the
+        // anchor unchanged; simulation starts on the following update.
+        initialized_ = false;
     }
 
     [[nodiscard]] Vec3 update(const Vec3& animated_anchor, float dt,
                               const ExactSpringSettings& settings) noexcept {
         if (!is_finite(animated_anchor) || !(dt > 0.0F) || !std::isfinite(dt)) {
-            return initialized_ ? previous_anchor_ + state_.offset : animated_anchor;
+            return initialized_ ? previous_anchor_ + state_.offset
+                                : (is_finite(previous_anchor_) ? previous_anchor_ : Vec3{});
         }
         if (!initialized_) {
-            reset(animated_anchor);
+            previous_anchor_ = animated_anchor;
+            previous_anchor_velocity_ = {};
+            initialized_ = true;
             return animated_anchor;
         }
 
