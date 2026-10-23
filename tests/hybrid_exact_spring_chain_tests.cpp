@@ -72,6 +72,13 @@ int main() {
             distance(hybrid.positions()[1], before[1]) == 0.0F,
             "invalid input leaves last valid output unchanged");
 
+    auto overflow = rest;
+    overflow[0].x = std::numeric_limits<float>::max();
+    require(!hybrid.step(overflow, dt, settings),
+            "finite anchors that overflow derived velocity are rejected");
+    require(distance(hybrid.positions()[1], before[1]) == 0.0F,
+            "rejected derived motion preserves the last valid output");
+
     hybrid.reset(rest);
     require(hybrid.positions().size() == rest.size(), "reset restores the supplied pose");
     require(distance(hybrid.positions()[2], rest[2]) < 1.0e-6F,
