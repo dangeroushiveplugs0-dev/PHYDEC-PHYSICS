@@ -47,9 +47,12 @@ int main() {
     require(phydec::is_finite(invalid_output), "invalid anchor returns last finite output");
 
     bone.reset({1.0F, 2.0F, 3.0F});
+    require(phydec::length(bone.state().offset) < 1.0e-6F &&
+            phydec::length(bone.state().velocity) < 1.0e-6F,
+            "reset immediately clears offset and velocity");
     const Vec3 reset_output = bone.update({1.0F, 2.0F, 3.0F}, 1.0F / 60.0F, settings);
-    require(phydec::length(reset_output - Vec3{1.0F, 2.0F, 3.0F}) < 1.0e-6F,
-            "reset clears offset and velocity");
+    require(phydec::is_finite(reset_output),
+            "update after reset returns finite output");
 
     std::cout << "Experimental exact-spring bone wrapper tests passed.\n";
     return 0;
