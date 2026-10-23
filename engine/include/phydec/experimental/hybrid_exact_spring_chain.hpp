@@ -65,6 +65,9 @@ public:
         }
 
         const std::size_t count = animated_anchors.size();
+        // Work on a private candidate state. A failed update must not partially
+        // advance hidden spring state while leaving the public output unchanged.
+        auto next_springs = springs_;
         std::vector<Vec3> anchor_velocities(count);
         anchor_velocities[0] = (animated_anchors[0] - previous_anchors_[0]) / dt;
         std::vector<Vec3> candidate(count);
@@ -74,8 +77,8 @@ public:
             anchor_velocities[i] = (animated_anchors[i] - previous_anchors_[i]) / dt;
             const Vec3 parent_velocity = (animated_anchors[i - 1] - previous_anchors_[i - 1]) / dt;
             const Vec3 parent_acceleration = (parent_velocity - previous_anchor_velocities_[i - 1]) / dt;
-            step_exact_spring(springs_[i], dt, spring_settings, parent_acceleration);
-            candidate[i] = animated_anchors[i] + springs_[i].offset;
+            step_exact_spring(next_springs[i], dt, spring_settings, parent_acceleration);
+            candidate[i] = animated_anchors[i] + next_springs[i].offset;
         }
 
         // Preserve the animated root and project the spring candidates onto
@@ -107,8 +110,9 @@ public:
         // Feed constraint corrections back into spring offsets so the next
         // analytical step starts from the constrained configuration.
         for (std::size_t i = 1; i < count; ++i) {
-            springs_[i].offset = candidate[i] - animated_anchors[i];
+            next_springs[i].offset = candidate[i] - animated_anchors[i];
         }
+        springs_ = std::move(next_springs);
         previous_anchors_ = animated_anchors;
         previous_anchor_velocities_ = std::move(anchor_velocities);
         output_positions_ = std::move(candidate);
