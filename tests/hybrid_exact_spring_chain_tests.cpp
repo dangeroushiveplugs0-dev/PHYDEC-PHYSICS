@@ -1,4 +1,5 @@
 #include "phydec/experimental/hybrid_exact_spring_chain.hpp"
+#include "phydec/secondary_motion.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -7,6 +8,8 @@
 #include <vector>
 
 using phydec::Vec3;
+using phydec::SecondaryMotionChain;
+using phydec::SecondaryMotionSettings;
 using phydec::experimental::ExactSpringSettings;
 using phydec::experimental::HybridExactSpringChain;
 
@@ -31,6 +34,11 @@ int main() {
     constexpr float pi = 3.14159265358979323846F;
     const std::vector<Vec3> rest{{0, 0, 0}, {0, -0.35F, 0}, {0, -0.70F, 0}, {0, -1.05F, 0}};
     HybridExactSpringChain hybrid(rest);
+    SecondaryMotionChain production(rest);
+    SecondaryMotionSettings production_settings;
+    production_settings.fixed_delta_seconds = dt;
+    production_settings.gravity = settings.gravity;
+    production_settings.constraint_iterations = 10;
     ExactSpringSettings settings;
     settings.frequency_hz = 2.1F;
     settings.damping_ratio = 0.32F;
@@ -38,6 +46,8 @@ int main() {
 
     float max_length_error = 0.0F;
     float max_offset = 0.0F;
+    float production_max_length_error = 0.0F;
+    float production_max_offset = 0.0F;
     for (int frame = 1; frame <= 1200; ++frame) {
         const float t = static_cast<float>(frame) * dt;
         const float angle = 0.75F * std::sin(2.0F * pi * 0.8F * t);
@@ -46,15 +56,26 @@ int main() {
         std::vector<Vec3> anchors;
         for (const Vec3& point : rest) anchors.push_back(root + rotate_z(point, angle));
         require(hybrid.step(anchors, dt, settings, 10), "valid animated pose is accepted");
+        production.set_anchors(anchors);
+        production.step(production_settings);
+        require(production.valid(), "production chain remains finite on the same animated pose");
         const auto& positions = hybrid.positions();
+        const auto& production_points = production.points();
         require(positions.size() == rest.size(), "output chain keeps the anchor count");
         for (std::size_t i = 0; i < positions.size(); ++i) {
             require(phydec::is_finite(positions[i]), "all hybrid positions remain finite");
             max_offset = std::max(max_offset, distance(positions[i], anchors[i]));
+            production_max_offset = std::max(production_max_offset,
+                distance(production_points[i].position, anchors[i]));
             if (i > 0) {
                 const float error = std::abs(distance(positions[i], positions[i - 1]) -
                                              distance(rest[i], rest[i - 1]));
                 max_length_error = std::max(max_length_error, error);
+                const float production_error = std::abs(
+                    distance(production_points[i].position, production_points[i - 1].position) -
+                    distance(rest[i], rest[i - 1]));
+                production_max_length_error = std::max(production_max_length_error,
+                                                       production_error);
             }
         }
         require(distance(positions[0], anchors[0]) < 1.0e-6F,
@@ -63,6 +84,10 @@ int main() {
     require(max_length_error < 0.015F,
             "hybrid constraints keep segment lengths near rest length");
     require(max_offset > 1.0e-5F, "hybrid retains a measurable secondary-motion response");
+    require(production_max_length_error < 0.03F,
+            "production baseline keeps segment lengths near rest lengths");
+    require(production_max_offset > 1.0e-5F,
+            "production baseline retains measurable secondary motion");
 
     const auto before = hybrid.positions();
     auto invalid = rest;
@@ -86,6 +111,8 @@ int main() {
 
     std::cout << "Hybrid exact-spring chain prototype passed 1200 frames. "
               << "Max segment-length error: " << max_length_error
-              << "; max offset: " << max_offset << '\n';
+              << "; max offset: " << max_offset << '\n'
+              << "Production baseline max segment-length error: "
+              << production_max_length_error << "; max offset: " << production_max_offset << '\n';
     return 0;
 }
