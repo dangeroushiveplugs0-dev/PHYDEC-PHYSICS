@@ -61,6 +61,7 @@ public:
 
         const std::size_t count = animated_anchors.size();
         std::vector<Vec3> anchor_velocities(count);
+        anchor_velocities[0] = (animated_anchors[0] - previous_anchors_[0]) / dt;
         std::vector<Vec3> candidate(count);
         candidate[0] = animated_anchors[0];
 
