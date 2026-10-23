@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 #include <vector>
 
 #include "phydec/experimental/exact_spring.hpp"
@@ -16,7 +17,7 @@ class HybridExactSpringChain {
 public:
     explicit HybridExactSpringChain(std::vector<Vec3> initial_anchors = {})
         : previous_anchors_(initial_anchors), output_positions_(initial_anchors),
-          springs_(initial_anchors.size()) {
+          springs_(initial_anchors.size()),\n          previous_anchor_velocities_(initial_anchors.size()) {\n        rebuild_rest_lengths();
         initialized_ = !initial_anchors.empty() && anchors_are_finite(initial_anchors);
         if (!initialized_) {
             previous_anchors_.clear();
@@ -78,7 +79,7 @@ public:
             for (std::size_t i = 1; i < count; ++i) {
                 const Vec3 delta = candidate[i] - candidate[i - 1];
                 const float current_length = length(delta);
-                const float rest_length = length(previous_anchors_[i] - previous_anchors_[i - 1]);
+                const float rest_length = rest_lengths_[i - 1];
                 if (!(current_length > 1.0e-7F) || !std::isfinite(current_length) ||
                     !std::isfinite(rest_length)) {
                     continue;
